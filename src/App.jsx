@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw } from "lucide-react";
+import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Brain, Waves, Sun, HeartPulse, Watch, Feather } from "lucide-react";
 import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress } from "./storage.js";
 
 // Fun, cycling palette for module nodes on the winding path — cosmic/night themed but varied
 const PALETTE = ["#2E7FD1", "#1C9450", "#D8465F", "#D9791F", "#E5C93A", "#2E7FD1"];
+const MODULE_ICONS = [Moon, Waves, Sun, Brain, HeartPulse, Watch, Feather, Sparkles];
 
 // Picks readable text (white vs. navy) based on the background colour's brightness —
 // used anywhere a dynamic/vibrant background hosts text or an icon.
@@ -21,9 +22,14 @@ const GLOBAL_STYLE = `
   .lp-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
   .lp-node:hover:not(:disabled) { transform: scale(1.1) !important; }
   .lp-node.current { animation: lp-pulse 1.8s ease-in-out infinite; }
-  @keyframes lp-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(201,162,75,0.4); } 50% { box-shadow: 0 0 0 8px rgba(201,162,75,0); } }
+  @keyframes lp-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(46,127,209,0.35); } 50% { box-shadow: 0 0 0 8px rgba(46,127,209,0); } }
   @keyframes lp-pop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
   .lp-pop { animation: lp-pop 0.25s ease; }
+  .lp-shell { max-width: 620px; margin: 0 auto; padding: 20px 20px 70px; }
+  @media (min-width: 900px) { .lp-shell { max-width: 760px; padding: 40px 32px 90px; } }
+  @media (min-width: 1280px) { .lp-shell { max-width: 900px; padding: 56px 40px 110px; } }
+  .lp-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 780px) { .lp-grid { grid-template-columns: 1fr 1fr; } }
 `;
 
 /* ============================================================
@@ -84,7 +90,7 @@ function TermCard({ term, definition, accent, ink }) {
       className="lp-btn"
       style={{
         display: "block", width: "100%", textAlign: "left", cursor: "pointer", margin: "0 0 12px",
-        background: flipped ? "#FBF6E9" : "#F5F4F0", border: `1.5px solid ${flipped ? accent : "#EAE7DF"}`,
+        background: flipped ? "#FBF6E9" : "#F4F8FD", border: `1.5px solid ${flipped ? accent : "#EAE7DF"}`,
         borderRadius: 12, padding: "14px 16px",
       }}
     >
@@ -109,7 +115,7 @@ function Diagram({ kind, accent, ink }) {
     // Simplified hypnogram: 4 cycles, deep sleep early, REM lengthening later
     const points = "0,20 20,20 40,90 60,90 80,140 110,140 130,90 150,60 170,20 200,20 220,90 240,120 270,80 290,40 310,20 340,20 360,80 380,60 410,10 440,10";
     return (
-      <div style={{ margin: "12px 0 22px", background: "#F5F4F0", borderRadius: 12, padding: "16px 12px" }}>
+      <div style={{ margin: "12px 0 22px", background: "#F4F8FD", borderRadius: 12, padding: "16px 12px" }}>
         <svg viewBox="0 0 460 170" style={{ width: "100%", height: "auto" }}>
           <text x="0" y="14" fontSize="9" fill="#9C99A6">Awake</text>
           <text x="0" y="34" fontSize="9" fill="#9C99A6">REM</text>
@@ -125,7 +131,7 @@ function Diagram({ kind, accent, ink }) {
   }
   if (kind === "cycle") {
     return (
-      <div style={{ margin: "12px 0 22px", background: "#F5F4F0", borderRadius: 12, padding: "16px 12px" }}>
+      <div style={{ margin: "12px 0 22px", background: "#F4F8FD", borderRadius: 12, padding: "16px 12px" }}>
         <svg viewBox="0 0 460 130" style={{ width: "100%", height: "auto" }}>
           {[0, 1, 2, 3].map((i) => (
             <g key={i}>
@@ -169,42 +175,81 @@ function buildSteps(lesson) {
   return steps;
 }
 
-function StepQuestion({ q, options, correct, explain, accent, onAnswered }) {
-  const [selected, setSelected] = useState(null);
+function StepQuestion({ q, type = "mc", options, correct, accept, explain, accent, onAnswered }) {
+  const [selected, setSelected] = useState(type === "multi" ? [] : null);
+  const [text, setText] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const isCorrect = selected === correct;
+
+  const isCorrect =
+    type === "multi"
+      ? selected.length === correct.length && correct.every((i) => selected.includes(i))
+      : type === "text"
+      ? accept.some((a) => a.trim().toLowerCase() === text.trim().toLowerCase())
+      : selected === correct;
+
+  const toggleMulti = (oi) => {
+    setSelected((prev) => (prev.includes(oi) ? prev.filter((x) => x !== oi) : [...prev, oi]));
+  };
+
+  const canCheck = type === "multi" ? selected.length > 0 : type === "text" ? text.trim().length > 0 : selected !== null;
+
   return (
     <div>
-      <p style={{ fontSize: 19, fontWeight: 700, color: "#17213A", lineHeight: 1.4, marginBottom: 18 }}>{q}</p>
-      {options.map((opt, oi) => {
-        let border = "#E3E1DA", bg = "#fff", textColor = "#2E3646";
-        if (confirmed && oi === correct) { border = "#1C9450"; bg = "#EAFAF0"; textColor = "#166A3C"; }
-        else if (confirmed && oi === selected) { border = "#D8465F"; bg = "#FCEAEC"; textColor = "#A23347"; }
-        else if (!confirmed && oi === selected) { border = accent; bg = "#EEF6FD"; }
-        return (
-          <button
-            key={oi}
-            disabled={confirmed}
-            onClick={() => setSelected(oi)}
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textAlign: "left", padding: "13px 16px", marginBottom: 10, borderRadius: 12, border: `2px solid ${border}`, background: bg, cursor: confirmed ? "default" : "pointer", fontSize: 15.5, color: textColor, fontWeight: 500 }}
-          >
-            {opt}
-            {confirmed && oi === correct && <Check size={18} color="#1C9450" />}
-            {confirmed && oi === selected && oi !== correct && <X size={18} color="#D8465F" />}
-          </button>
-        );
-      })}
+      <p style={{ fontSize: 19, fontWeight: 700, color: "#17213A", lineHeight: 1.4, marginBottom: 6 }}>{q}</p>
+      {type === "multi" && <p style={{ fontSize: 13, color: "#8A8FA0", marginBottom: 14 }}>Select all that apply</p>}
+      {type !== "text" && type !== "multi" && <div style={{ marginBottom: 12 }} />}
+
+      {(type === "mc" || type === "multi") &&
+        options.map((opt, oi) => {
+          const isSelected = type === "multi" ? selected.includes(oi) : selected === oi;
+          const isRightAnswer = type === "multi" ? correct.includes(oi) : oi === correct;
+          let border = "#E3E1DA", bg = "#fff", textColor = "#2E3646";
+          if (confirmed && isRightAnswer) { border = "#1C9450"; bg = "#EAFAF0"; textColor = "#166A3C"; }
+          else if (confirmed && isSelected) { border = "#D8465F"; bg = "#FCEAEC"; textColor = "#A23347"; }
+          else if (!confirmed && isSelected) { border = accent; bg = "#EFF6FD"; }
+          return (
+            <button
+              key={oi}
+              disabled={confirmed}
+              onClick={() => (type === "multi" ? toggleMulti(oi) : setSelected(oi))}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textAlign: "left", padding: "13px 16px", marginBottom: 10, borderRadius: 12, border: `2px solid ${border}`, background: bg, cursor: confirmed ? "default" : "pointer", fontSize: 15.5, color: textColor, fontWeight: 500 }}
+            >
+              {opt}
+              {confirmed && isRightAnswer && <Check size={18} color="#1C9450" />}
+              {confirmed && isSelected && !isRightAnswer && <X size={18} color="#D8465F" />}
+            </button>
+          );
+        })}
+
+      {type === "text" && (
+        <input
+          type="text"
+          disabled={confirmed}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type your answer…"
+          style={{
+            width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 12, fontSize: 15.5,
+            border: `2px solid ${confirmed ? (isCorrect ? "#1C9450" : "#D8465F") : "#E3E1DA"}`,
+            background: confirmed ? (isCorrect ? "#EAFAF0" : "#FCEAEC") : "#fff", marginBottom: 10,
+          }}
+        />
+      )}
+
       {!confirmed ? (
         <button
-          disabled={selected === null}
+          disabled={!canCheck}
           onClick={() => setConfirmed(true)}
           className="lp-btn"
-          style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", marginTop: 8, background: selected === null ? "#E3E1DA" : "#17213A", color: "#fff", fontWeight: 700, fontSize: 15.5, cursor: selected === null ? "default" : "pointer" }}
+          style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", marginTop: 8, background: !canCheck ? "#E3E1DA" : accent, color: !canCheck ? "#8A8078" : textOn(accent), fontWeight: 700, fontSize: 15.5, cursor: !canCheck ? "default" : "pointer" }}
         >
           Check
         </button>
       ) : (
         <div className="lp-pop">
+          {type === "text" && !isCorrect && (
+            <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: "0 0 10px" }}>Correct answer: <strong>{accept[0]}</strong></p>
+          )}
           {explain && (
             <div style={{ background: isCorrect ? "#EAFAF0" : "#FBF6E9", borderRadius: 10, padding: "12px 14px", marginTop: 4, marginBottom: 12 }}>
               <p style={{ fontSize: 14, color: isCorrect ? "#166A3C" : "#8A6A50", margin: 0, fontWeight: 500 }}>{isCorrect ? "Correct! " : "Not quite — "}{explain}</p>
@@ -223,7 +268,7 @@ function StepQuestion({ q, options, correct, explain, accent, onAnswered }) {
   );
 }
 
-function LessonView({ course, module, lesson, onBack, onComplete, completed }) {
+function LessonView({ course, module, lesson, onBack, onComplete, onGoModule, onGoHome, onGoNext, nextLesson, completed }) {
   const steps = React.useMemo(() => buildSteps(lesson), [lesson]);
   const quizStartIndex = steps.findIndex((s) => s.type === "quiz");
   const [stepIndex, setStepIndex] = useState(completed ? steps.length - 1 : 0);
@@ -242,8 +287,14 @@ function LessonView({ course, module, lesson, onBack, onComplete, completed }) {
   const score = Object.values(quizResults).filter(Boolean).length;
   const passed = score >= Math.ceil(lesson.quiz.length * 0.66);
 
+  useEffect(() => {
+    if (step.type === "results" && passed && !completed) onComplete();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step.type, passed]);
+
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 20px 80px" }}>
+    <div className="lp-shell">
+      <style>{GLOBAL_STYLE}</style>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0 }}>
         <ArrowLeft size={16} /> Module {module.number}
       </button>
@@ -264,23 +315,42 @@ function LessonView({ course, module, lesson, onBack, onComplete, completed }) {
             if (b.type === "diagram") return <Diagram key={i} kind={b.kind} accent={course.accent} ink={course.ink} />;
             return <Block key={i} block={b} accent={course.accent} ink={course.ink} />;
           })}
-          <button className="lp-btn" onClick={goNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: course.accent, color: "#fff", fontWeight: 700, fontSize: 15.5, cursor: "pointer", marginTop: 8 }}>
+          <button className="lp-btn" onClick={goNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: course.accent, color: textOn(course.accent), fontWeight: 700, fontSize: 15.5, cursor: "pointer", marginTop: 8 }}>
             Continue
           </button>
         </div>
       )}
 
       {step.type === "check" && (
-        <div className="lp-pop">
+        <div className="lp-pop" key={`check-${stepIndex}`}>
           <p style={{ fontSize: 12.5, fontWeight: 700, color: "#D8465F", letterSpacing: 0.5, marginBottom: 12 }}>QUICK PAUSE</p>
-          <StepQuestion q={step.block.q} options={step.block.options} correct={step.block.correct} explain={step.block.explain} accent="#D8465F" onAnswered={goNext} />
+          <StepQuestion
+            key={stepIndex}
+            q={step.block.q}
+            type={step.block.qtype || "mc"}
+            options={step.block.options}
+            correct={step.block.correct}
+            accept={step.block.accept}
+            explain={step.block.explain}
+            accent="#D8465F"
+            onAnswered={goNext}
+          />
         </div>
       )}
 
       {step.type === "quiz" && (
         <div className="lp-pop">
           <p style={{ fontSize: 12.5, fontWeight: 700, color: "#1C9450", letterSpacing: 0.5, marginBottom: 12 }}>QUIZ · QUESTION {step.index + 1} OF {lesson.quiz.length}</p>
-          <StepQuestion q={step.q.q} options={step.q.options} correct={step.q.correct} accent="#1C9450" onAnswered={(correct) => handleQuizAnswered(step.index, correct)} />
+          <StepQuestion
+            key={stepIndex}
+            q={step.q.q}
+            type={step.q.qtype || "mc"}
+            options={step.q.options}
+            correct={step.q.correct}
+            accept={step.q.accept}
+            accent="#1C9450"
+            onAnswered={(correct) => handleQuizAnswered(step.index, correct)}
+          />
         </div>
       )}
 
@@ -289,12 +359,31 @@ function LessonView({ course, module, lesson, onBack, onComplete, completed }) {
           <div style={{ width: 72, height: 72, borderRadius: "50%", background: passed ? "#EAFAF0" : "#FBF6E9", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
             {passed ? <Check size={34} color="#1C9450" /> : <X size={34} color="#D9791F" />}
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: course.ink, marginBottom: 6 }}>{passed ? "Lesson complete!" : "Almost there"}</h2>
-          <p style={{ fontSize: 15, color: "#8A8FA0", marginBottom: 24 }}>{score}/{lesson.quiz.length} correct</p>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: course.ink, marginBottom: 10 }}>{passed ? "Lesson complete!" : "Almost there"}</h2>
+
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 10 }}>
+            {lesson.quiz.map((_, i) => (
+              <div key={i} style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: quizResults[i] ? "#EAFAF0" : "#FCEAEC" }}>
+                {quizResults[i] ? <Check size={14} color="#1C9450" /> : <X size={14} color="#D8465F" />}
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 15, color: "#8A8FA0", marginBottom: 24 }}>{score}/{lesson.quiz.length} correct — here's how you went</p>
+
           {passed ? (
-            <button className="lp-btn" onClick={onComplete} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: "#1C9450", color: "#fff", fontWeight: 700, fontSize: 15.5, cursor: "pointer" }}>
-              Done
-            </button>
+            <div>
+              <button className="lp-btn" onClick={onGoNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: "#1C9450", color: "#fff", fontWeight: 700, fontSize: 15.5, cursor: "pointer", marginBottom: 10 }}>
+                {nextLesson ? `Next: ${nextLesson.title} →` : "Back to modules →"}
+              </button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className="lp-btn" onClick={onGoModule} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1.5px solid #EAE7DF", background: "#fff", color: course.ink, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                  Module list
+                </button>
+                <button className="lp-btn" onClick={onGoHome} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1.5px solid #EAE7DF", background: "#fff", color: course.ink, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                  Home
+                </button>
+              </div>
+            </div>
           ) : (
             <button
               className="lp-btn"
@@ -316,7 +405,8 @@ function LessonView({ course, module, lesson, onBack, onComplete, completed }) {
 
 function ModuleView({ course, module, completedLessons, onBack, onOpenLesson }) {
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 20px 60px" }}>
+    <div className="lp-shell">
+      <style>{GLOBAL_STYLE}</style>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0 }}>
         <ArrowLeft size={16} /> {course.title}
       </button>
@@ -328,7 +418,7 @@ function ModuleView({ course, module, completedLessons, onBack, onOpenLesson }) 
         <>
           <p style={{ fontSize: 13.5, color: "#B8B5AC", marginBottom: 14 }}>Lessons below are planned — content is being built next.</p>
           {(module.lessonPreview || []).map((l) => (
-            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", marginBottom: 10, borderRadius: 10, border: "1px solid #EAE7DF", background: "#F7F6F2" }}>
+            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", marginBottom: 10, borderRadius: 10, border: "1px solid #EAE7DF", background: "#F6F5FA" }}>
               <div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#E3E1DA", color: "#A3A096" }}>
                 <Lock size={13} />
               </div>
@@ -354,7 +444,7 @@ function ModuleView({ course, module, completedLessons, onBack, onOpenLesson }) 
               display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
               padding: "16px 18px", marginBottom: 10, borderRadius: 10,
               border: `1px solid ${isDone ? "#D8E8DB" : "#EAE7DF"}`,
-              background: isDone ? "#F5FAF6" : isLocked ? "#F7F6F2" : "#fff",
+              background: isDone ? "#F5FAF6" : isLocked ? "#F6F5FA" : "#fff",
               cursor: isLocked ? "default" : "pointer", textAlign: "left",
             }}
           >
@@ -394,7 +484,7 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
   const sectionOrder = [...new Set(course.modules.map((m) => m.section))];
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 20px 60px" }}>
+    <div className="lp-shell">
       <style>{GLOBAL_STYLE}</style>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0 }}>
         <ArrowLeft size={16} /> All courses
@@ -440,14 +530,17 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
                     width: 58, height: 58, borderRadius: "50%", flexShrink: 0, display: "flex",
                     alignItems: "center", justifyContent: "center", zIndex: 1,
                     background: color, color: isLocked ? "#A3A0A0" : textOn(color), fontWeight: 700, fontSize: 17,
-                    border: "4px solid #FAFAF8", cursor: isLocked ? "default" : "pointer",
+                    border: "4px solid #FFFFFF", cursor: isLocked ? "default" : "pointer",
                     boxShadow: isLocked ? "none" : `0 4px 0 ${complete ? "#178A48" : "rgba(0,0,0,0.15)"}`,
                   }}
                   title={m.title}
                 >
                   {complete ? <Check size={22} /> : isLocked ? <Lock size={18} /> : m.number}
                 </button>
-                <p style={{ fontSize: 11.5, fontWeight: 600, color: isLocked ? "#C2BFB6" : course.ink, margin: "8px 0 0", lineHeight: 1.3, maxWidth: 130, textAlign: "center" }}>{m.title}</p>
+                <p style={{ fontSize: 11.5, fontWeight: 600, color: isLocked ? "#C2BFB6" : course.ink, margin: "8px 0 0", lineHeight: 1.3, maxWidth: 130, textAlign: "center", display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
+                  {React.createElement(MODULE_ICONS[i % MODULE_ICONS.length], { size: 12, color: isLocked ? "#C2BFB6" : color })}
+                  {m.title}
+                </p>
               </div>
             </React.Fragment>
           );
@@ -473,7 +566,8 @@ function CurriculumView({ course, completedLessons, onBack }) {
   });
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 20px 60px" }}>
+    <div className="lp-shell">
+      <style>{GLOBAL_STYLE}</style>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0 }}>
         <ArrowLeft size={16} /> {course.title}
       </button>
@@ -516,46 +610,46 @@ function CurriculumView({ course, completedLessons, onBack }) {
 function Hub({ courses, progressMap, onOpenCourse }) {
   const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 20px 60px" }}>
+    <div className="lp-shell">
       <style>{GLOBAL_STYLE}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Moon size={20} color="#17213A" />
           <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.4, color: "#8A8FA0", margin: 0 }}>YOUR ACADEMY</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#FBF6E9", borderRadius: 20, padding: "6px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#FFF4E8", borderRadius: 20, padding: "6px 12px" }}>
           <Star size={14} color="#D9791F" fill="#D9791F" />
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "#17213A" }}>{totalStars}</span>
         </div>
       </div>
       <h1 style={{ fontSize: 30, fontWeight: 700, color: "#17213A", marginBottom: 28, fontFamily: "ui-serif, Georgia, serif" }}>Courses</h1>
 
-      {courses.map((c) => {
-        const completedLessons = progressMap[c.id]?.completedLessons || [];
-        const done = completedLessons.length;
-        const total = c.modules.reduce((n, m) => n + (m.lessons.length || (m.lessonPreview || []).length), 0);
-        const isModuleComplete = (m) => m.lessons.length > 0 && m.lessons.every((l) => completedLessons.includes(l.id));
-        const currentIndex = c.modules.findIndex((m) => !isModuleComplete(m));
-        const currentModule = currentIndex === -1 ? c.modules[c.modules.length - 1] : c.modules[currentIndex];
-        const moduleTotal = currentModule.lessons.length || (currentModule.lessonPreview || []).length;
-        const moduleDone = currentModule.lessons.filter((l) => completedLessons.includes(l.id)).length;
-        return (
-          <button key={c.id} className="lp-btn" onClick={() => onOpenCourse(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "1px solid #EAE7DF", borderRadius: 14, padding: 20, marginBottom: 14, cursor: "pointer", boxShadow: "0 2px 0 rgba(0,0,0,0.04)" }}>
-            <p style={{ fontSize: 18, fontWeight: 700, color: c.ink, margin: "0 0 4px", fontFamily: "ui-serif, Georgia, serif" }}>{c.title}</p>
-            <p style={{ fontSize: 14, color: "#8A8FA0", margin: "0 0 14px" }}>{c.tagline}</p>
+      <div className="lp-grid" style={{ marginBottom: 16 }}>
+        {courses.map((c) => {
+          const completedLessons = progressMap[c.id]?.completedLessons || [];
+          const done = completedLessons.length;
+          const total = c.modules.reduce((n, m) => n + (m.lessons.length || (m.lessonPreview || []).length), 0);
+          const isModuleComplete = (m) => m.lessons.length > 0 && m.lessons.every((l) => completedLessons.includes(l.id));
+          const currentIndex = c.modules.findIndex((m) => !isModuleComplete(m));
+          const currentModule = currentIndex === -1 ? c.modules[c.modules.length - 1] : c.modules[currentIndex];
+          return (
+            <button key={c.id} className="lp-btn" onClick={() => onOpenCourse(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: `1.5px solid ${c.accent}22`, borderTop: `4px solid ${c.accent}`, borderRadius: 16, padding: 20, cursor: "pointer", boxShadow: "0 2px 10px rgba(23,33,58,0.05)" }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: c.ink, margin: "0 0 4px", fontFamily: "ui-serif, Georgia, serif" }}>{c.title}</p>
+              <p style={{ fontSize: 14, color: "#8A8FA0", margin: "0 0 14px" }}>{c.tagline}</p>
 
-            <p style={{ fontSize: 12.5, fontWeight: 600, color: c.ink, margin: "0 0 8px" }}>Module {currentModule.number} of {c.modules.length} — {currentModule.title}</p>
+              <p style={{ fontSize: 12.5, fontWeight: 600, color: c.ink, margin: "0 0 8px" }}>Module {currentModule.number} of {c.modules.length} — {currentModule.title}</p>
 
-            <div style={{ height: 8, background: "#F1EFE9", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${total ? (done / total) * 100 : 0}%`, background: c.accent, borderRadius: 4 }} />
-            </div>
-            <p style={{ fontSize: 12.5, color: "#A3A0A0", marginTop: 6, marginBottom: 0 }}>{done}/{total} lessons complete</p>
-          </button>
-        );
-      })}
+              <div style={{ height: 8, background: "#F1EFE9", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${total ? (done / total) * 100 : 0}%`, background: c.accent, borderRadius: 4 }} />
+              </div>
+              <p style={{ fontSize: 12.5, color: "#A3A0A0", marginTop: 6, marginBottom: 0 }}>{done}/{total} lessons complete</p>
+            </button>
+          );
+        })}
 
-      <div style={{ border: "1.5px dashed #EAE7DF", borderRadius: 14, padding: 20, textAlign: "center" }}>
-        <p style={{ fontSize: 14, color: "#B8B5AC", margin: 0 }}>Psychology and Effective Learning — coming soon</p>
+        <div style={{ border: "2px dashed #E3E1DA", borderRadius: 16, padding: 20, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 100 }}>
+          <p style={{ fontSize: 14, color: "#B8B5AC", margin: 0 }}>Psychology and Effective Learning — coming soon</p>
+        </div>
       </div>
     </div>
   );
@@ -593,7 +687,7 @@ export default function LearningPlatform() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FAFAF8", fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
       {view.screen === "hub" && (
         <Hub courses={COURSES} progressMap={progressMap} onOpenCourse={(c) => setView({ screen: "course", course: c })} />
       )}
@@ -622,19 +716,28 @@ export default function LearningPlatform() {
           onOpenLesson={(l) => setView({ screen: "lesson", course: view.course, module: view.module, lesson: l })}
         />
       )}
-      {view.screen === "lesson" && (
-        <LessonView
-          course={view.course}
-          module={view.module}
-          lesson={view.lesson}
-          completed={(progressMap[view.course.id]?.completedLessons || []).includes(view.lesson.id)}
-          onBack={() => setView({ screen: "module", course: view.course, module: view.module })}
-          onComplete={() => {
-            completeLesson(view.course.id, view.lesson.id);
-            setView({ screen: "module", course: view.course, module: view.module });
-          }}
-        />
-      )}
+      {view.screen === "lesson" && (() => {
+        const idx = view.module.lessons.findIndex((l) => l.id === view.lesson.id);
+        const nextLesson = idx >= 0 ? view.module.lessons[idx + 1] || null : null;
+        return (
+          <LessonView
+            course={view.course}
+            module={view.module}
+            lesson={view.lesson}
+            completed={(progressMap[view.course.id]?.completedLessons || []).includes(view.lesson.id)}
+            nextLesson={nextLesson}
+            onBack={() => setView({ screen: "module", course: view.course, module: view.module })}
+            onComplete={() => completeLesson(view.course.id, view.lesson.id)}
+            onGoModule={() => setView({ screen: "module", course: view.course, module: view.module })}
+            onGoHome={() => setView({ screen: "hub" })}
+            onGoNext={() =>
+              nextLesson
+                ? setView({ screen: "lesson", course: view.course, module: view.module, lesson: nextLesson })
+                : setView({ screen: "module", course: view.course, module: view.module })
+            }
+          />
+        );
+      })()}
     </div>
   );
 }

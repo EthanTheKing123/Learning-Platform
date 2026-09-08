@@ -139,13 +139,14 @@ export const sleepScience = {
             { type: "term", term: "K-complex", definition: "A single large, sharp brainwave seen in Stage 2 — appears both spontaneously and in response to outside stimuli, possibly suppressing arousal." },
             { type: "h", text: "Stage 3 — deep / slow-wave sleep" },
             { type: "p", text: "The deepest NREM stage, dominated by large, slow **delta waves**. This is the hardest stage to be woken from, and if you are woken from it, you'll usually feel the most disoriented (this connects directly to sleep inertia, covered in Module 3). Stage 3 is when the body does the most physical repair work — see Module 6." },
-            { type: "check", q: "Which stage features sleep spindles and K-complexes?", options: ["Stage 1", "Stage 2", "Stage 3"], correct: 1, explain: "Sleep spindles and K-complexes are the defining EEG features of Stage 2." },
+            { type: "check", qtype: "multi", q: "Which of these are true of Stage 2 sleep? (select all that apply)", options: ["It features sleep spindles", "It features K-complexes", "It's the deepest NREM stage", "You spend more total time in it than any other stage"], correct: [0, 1, 3], explain: "Stage 2 has spindles and K-complexes and takes up the most total sleep time — but Stage 3, not Stage 2, is the deepest." },
             { type: "callout", text: "Depth order to remember: **Stage 1 (lightest) → Stage 2 (spindles/K-complexes) → Stage 3 (deepest, delta waves, hardest to wake from).**" },
           ],
           quiz: [
             { q: "Which NREM stage do you spend the most total time in across a night?", options: ["Stage 1", "Stage 2", "Stage 3"], correct: 1 },
             { q: "What type of brainwave dominates Stage 3?", options: ["Fast spindles", "Delta waves (large, slow)", "K-complexes only", "REM-like fast waves"], correct: 1 },
             { q: "Which stage is easiest to be woken from?", options: ["Stage 1", "Stage 2", "Stage 3"], correct: 0 },
+            { q: "Type the term: the brief bursts of fast brain activity seen in Stage 2, linked to memory consolidation.", qtype: "text", accept: ["sleep spindle", "sleep spindles", "spindle", "spindles"] },
           ],
         },
         {
@@ -159,7 +160,7 @@ export const sleepScience = {
               "**Muscle atonia** — near-total paralysis of the skeletal muscles, picked up as a flatline on the EMG. This is the body's built-in safety mechanism, preventing you from physically acting out what's happening in a dream.",
             ]},
             { type: "p", text: "This is also the stage most strongly associated with vivid, narrative dreaming, as Dement's waking experiments (Module 1) demonstrated. Vivid dreams can occur in NREM sleep too, but they're less frequent and less bizarre/story-like — this gets its own deep-dive in Module 7." },
-            { type: "check", q: "What does EMG typically show during REM sleep?", options: ["High muscle activity", "Near-flatline muscle activity (atonia)", "No signal at all", "Rapid heartbeat only"], correct: 1, explain: "REM atonia means the EMG signal drops to near-flat — the muscles are essentially switched off." },
+            { type: "check", qtype: "multi", q: "Which of these are true during REM sleep? (select all that apply)", options: ["Muscle tone drops to near-flatline (atonia)", "The eyes move rapidly behind closed lids", "Brain activity looks similar to waking on an EEG", "It's the deepest, hardest stage to wake from"], correct: [0, 1, 2], explain: "Deep, hardest-to-wake-from sleep is Stage 3 (NREM), not REM — REM's brain activity is closer to waking." },
             { type: "h", text: "Why 'paradoxical'?" },
             { type: "p", text: "Because the brain is highly active — similar to waking on an EEG trace — while the body is nearly paralysed. Active brain, inactive body: that contradiction is the paradox the name refers to." },
             { type: "callout", text: "If you ever see a question asking why REM is called 'paradoxical sleep,' the answer is always this contradiction: **active brain, paralysed body.**" },
@@ -168,6 +169,7 @@ export const sleepScience = {
             { q: "Why is REM sleep called 'paradoxical'?", options: ["Because it never happens", "Because the brain is highly active while the body is nearly paralysed", "Because it only happens in dreams", "Because it happens during the day"], correct: 1 },
             { q: "What function does REM muscle atonia serve?", options: ["Improves digestion", "Prevents physically acting out dreams", "Increases heart rate", "Helps with breathing"], correct: 1 },
             { q: "Which signal picks up the defining eye movements of REM sleep?", options: ["EEG", "EOG", "EMG"], correct: 1 },
+            { q: "Type the term: REM sleep's nickname, referring to the contradiction between an active brain and a paralysed body.", qtype: "text", accept: ["paradoxical sleep", "paradoxical"] },
           ],
         },
         {

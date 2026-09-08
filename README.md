@@ -42,10 +42,14 @@ already used in Modules 1–3. Each lesson looks like this:
     { type: "term", term: "Some Term", definition: "Its definition — renders as a tap-to-flip flashcard." },
     { type: "diagram", kind: "hypnogram" }, // or "cycle" — see Diagram() in App.jsx to add more
     { type: "check", q: "A mid-lesson question?", options: ["A", "B", "C"], correct: 1, explain: "Why B is right." },
+    // question types — omit qtype for a normal single-choice question:
+    { type: "check", qtype: "multi", q: "Select all that apply", options: ["A", "B", "C", "D"], correct: [0, 2], explain: "Why A and C." },
+    { type: "check", qtype: "text", q: "Type the term for X.", accept: ["term", "the term", "alt phrasing"] }, // matches any string in accept, case-insensitive
   ],
   quiz: [
     { q: "End-of-lesson question?", options: ["A", "B", "C", "D"], correct: 2 },
-    // 3 questions is the norm; pass mark is ~66%
+    // quiz questions support the same qtype/options/correct or qtype/accept shapes as checks above.
+    // Vary length and type lesson to lesson — 3 is typical, more is fine; mixing mc/multi/text keeps it interesting.
   ],
 }
 ```
