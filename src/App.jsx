@@ -678,7 +678,6 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
 
   return (
     <div className="lp-shell-narrow">
-      <style>{GLOBAL_STYLE}</style>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
         <ArrowLeft size={16} /> All courses
       </button>
@@ -804,7 +803,6 @@ function Hub({ courses, progressMap, onOpenCourse }) {
   const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
   return (
     <div className="lp-shell-wide">
-      <style>{GLOBAL_STYLE}</style>
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -908,6 +906,18 @@ export default function LearningPlatform() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: FONT_BODY }}>
+      {/* Rendered once here at the true root, which never unmounts as you
+          navigate between screens — this is what actually fixes the
+          "modules/lessons go to the edge, no spacing" bug. GLOBAL_STYLE
+          defines .lp-shell-wide/.lp-shell-narrow (max-width + centering)
+          and .lp-grid (the gap between cards), but it was previously only
+          rendered inside CourseMap and Hub — so the moment you navigated
+          to ModuleView, LessonView, or CurriculumView (none of which
+          rendered it themselves), React tore the <style> tag out of the
+          page along with the CourseMap/Hub that had it, and those three
+          screens were left with the class names in their JSX but zero
+          matching CSS rules: full-width, no-gap divs, on every device. */}
+      <style>{GLOBAL_STYLE}</style>
       {view.screen === "hub" && (
         <Hub courses={COURSES} progressMap={progressMap} onOpenCourse={(c) => setView({ screen: "course", course: c })} />
       )}
