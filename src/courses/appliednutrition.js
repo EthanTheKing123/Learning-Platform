@@ -690,7 +690,9 @@ export const appliedNutrition = {
             { type: "h", text: "When supplements make sense" },
             { type: "list", items: [
               "**Deficiencies**: Correcting diagnosed deficiencies (e.g. vitamin D, iron, B12).",
-              **" },
+              "**Restricted diets**: Vegans/vegetarians (B12), or anyone cutting a major food group.",
+              "**Increased demand**: Pregnancy, breastfeeding, high-volume athletic training.",
+              "**Limited access**: Low sun exposure (vitamin D), or a diet that doesn't cover it.",
             ]},
             { type: "h", text: "Strategic supplementation" },
             { type: "list", items: [
@@ -868,3 +870,5 @@ export const appliedNutrition = {
         },
       ],
     },
+  ],
+};
