@@ -69,7 +69,7 @@ function SignInScreen() {
         <div style={{ width: 56, height: 56, borderRadius: 16, background: "#17213A", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
           <Moon size={26} color="#fff" />
         </div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: "#17213A", marginBottom: 6, fontFamily: '"Baloo 2", "Nunito", sans-serif' }}>Sleep Academy</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: "#17213A", marginBottom: 6, fontFamily: '"Baloo 2", "Nunito", sans-serif' }}>Learning Academy</h1>
         <p style={{ fontSize: 15, color: "#6B7080", marginBottom: 28, fontWeight: 600 }}>Sign in to save your progress across devices.</p>
 
         <button

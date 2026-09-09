@@ -1,4 +1,4 @@
-# Sleep Academy
+# Learning Academy
 
 A self-hosted learning platform. The engine (`src/App.jsx`) is generic —
 all subject content lives in separate data files under `src/courses/`.
@@ -42,14 +42,17 @@ already used in Modules 1–3. Each lesson looks like this:
     { type: "term", term: "Some Term", definition: "Its definition — renders as a tap-to-flip flashcard." },
     { type: "diagram", kind: "hypnogram" }, // or "cycle" — see Diagram() in App.jsx to add more
     { type: "check", q: "A mid-lesson question?", options: ["A", "B", "C"], correct: 1, explain: "Why B is right." },
-    // question types — omit qtype for a normal single-choice question:
+    // question types — omit qtype (on a check) / type (in a quiz item) for a normal single-choice question.
+    // Four supported values: "mcq" (default), "truefalse", "multi", "type".
     { type: "check", qtype: "multi", q: "Select all that apply", options: ["A", "B", "C", "D"], correct: [0, 2], explain: "Why A and C." },
-    { type: "check", qtype: "text", q: "Type the term for X.", accept: ["term", "the term", "alt phrasing"] }, // matches any string in accept, case-insensitive
+    { type: "check", qtype: "truefalse", q: "True or false: ...", correct: true, explain: "Why." },
+    { type: "check", qtype: "type", q: "Type the term for X.", accepted: ["term", "the term", "alt phrasing"] }, // matches any string in accepted, case-insensitive
   ],
   quiz: [
     { q: "End-of-lesson question?", options: ["A", "B", "C", "D"], correct: 2 },
-    // quiz questions support the same qtype/options/correct or qtype/accept shapes as checks above.
-    // Vary length and type lesson to lesson — 3 is typical, more is fine; mixing mc/multi/text keeps it interesting.
+    // Quiz items use `type` (not `qtype`) for the same four values: "mcq" (default), "truefalse", "multi", "type".
+    // e.g. { type: "truefalse", q: "...", correct: false, explain: "..." }
+    // Vary length and type lesson to lesson — 3 is typical, more is fine; mixing types keeps it interesting.
   ],
 }
 ```
@@ -70,21 +73,16 @@ That's the entire workflow for updating Sleep Science.
 3. Done — it appears on the home hub automatically, with its own colour
    and its own progress tracking. Nothing else changes.
 
-## Progress storage (and adding accounts later)
+## Accounts & progress storage
 
-Right now progress is saved in the browser's `localStorage` (see
-`src/storage.js`) — it's per-device, no login required, good enough for
-personal use or testing.
+Accounts are live: `src/AuthGate.jsx` wraps the whole app with a sign-in
+screen (Google or email/password) before anything else renders, and
+`src/storage.js` saves progress to Firestore, keyed by the signed-in
+user's account ID (`users/{uid}/progress/{courseId}`) instead of the
+browser. See `FIREBASE_SETUP.md` for how the Firebase project itself was
+configured (auth providers, Firestore rules, environment variables) —
+useful if you ever set this up again for a second project.
 
-When you want accounts (so progress follows you across devices):
-1. Create a Firebase project, turn on **Authentication** (Google sign-in
-   is simplest) and **Firestore**.
-2. `src/storage.js` is the *only* file that needs to change — swap
-   `loadProgress`/`saveProgress` for Firestore `getDoc`/`setDoc` calls
-   keyed by the signed-in user's ID instead of just the course ID.
-3. Add a simple "Sign in with Google" screen in `App.jsx` before the Hub
-   renders.
-
-Nothing in the course data files or the rest of the engine needs to
-change for that migration — that's the whole point of keeping storage
-isolated in one file.
+Nothing in the course data files needed to change for this — `App.jsx`
+only ever calls `loadProgress(courseId)` / `saveProgress(courseId, p)`,
+so the storage backend stays swappable without touching lesson content.

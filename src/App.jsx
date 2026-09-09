@@ -3,9 +3,6 @@ import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles
 import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress } from "./storage.js";
 
-// Fun, cycling palette for module nodes on the winding path — cosmic/night themed but varied
-const PALETTE = ["#2E7FD1", "#1C9450", "#D8465F", "#D9791F", "#E5C93A", "#2E7FD1"];
-
 // Picks readable text (white vs. navy) based on the background colour's brightness —
 // used anywhere a dynamic/vibrant background hosts text or an icon.
 function textOn(hex) {
@@ -42,16 +39,21 @@ const GLOBAL_STYLE = `
   .lp-pop { animation: lp-pop 0.22s ease; }
   .lp-float { animation: lp-float 4s ease-in-out infinite; }
 
-  .lp-shell-wide { max-width: 640px; margin: 0 auto; padding: 28px 20px 70px; }
-  .lp-shell-narrow { max-width: 640px; margin: 0 auto; padding: 20px 20px 80px; }
+  .lp-shell-wide { max-width: 640px; margin: 0 auto; padding: 28px 20px 70px; width: 100%; }
+  .lp-shell-narrow { max-width: 640px; margin: 0 auto; padding: 20px 20px 80px; width: 100%; }
   @media (min-width: 860px) {
     .lp-shell-wide { max-width: 900px; padding: 44px 36px 90px; }
-    .lp-shell-narrow { max-width: 700px; padding: 32px 24px 90px; }
+    .lp-shell-narrow { max-width: 720px; padding: 32px 24px 90px; }
   }
   @media (min-width: 1200px) {
     .lp-shell-wide { max-width: 1040px; }
+    .lp-shell-narrow { max-width: 760px; }
   }
-  .lp-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  /* Capped independently of the shell so a 1–2 item grid never balloons
+     into oversized cards on a wide laptop screen — extra room becomes
+     side margin instead, which is what makes it feel intentional rather
+     than stretched. */
+  .lp-grid { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 780px; margin: 0 auto; }
   @media (min-width: 860px) {
     .lp-grid { grid-template-columns: 1fr 1fr; gap: 20px; }
   }
@@ -700,7 +702,11 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
           const complete = isModuleComplete(m);
           const isLocked = !prevComplete && !complete;
           const isCurrent = i === nextUnlockedIndex;
-          const color = complete ? "#1C9450" : isLocked ? "#E7E5EE" : PALETTE[i % PALETTE.length];
+          // Consistent 3-state colour system: done = green, available = the
+          // course's own accent, locked = grey. (Previously this cycled
+          // through a 5-colour rainbow per module index, which is what made
+          // the path look busy/inconsistent next to the sign-in page.)
+          const color = complete ? "#1C9450" : isLocked ? "#E7E5EE" : course.accent;
           const offset = offsets[i % offsets.length];
           const isNewLevel = i === 0 || course.modules[i - 1].section !== m.section;
           const levelNumber = sectionOrder.indexOf(m.section) + 1;
@@ -797,13 +803,9 @@ function CurriculumView({ course, completedLessons, onBack }) {
 function Hub({ courses, progressMap, onOpenCourse }) {
   const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
   return (
-    <div className="lp-shell-wide" style={{ position: "relative", overflow: "hidden" }}>
+    <div className="lp-shell-wide">
       <style>{GLOBAL_STYLE}</style>
-      <div style={{ position: "absolute", top: -70, left: -60, width: 240, height: 240, borderRadius: "50%", background: "#2E7FD1", opacity: 0.12, filter: "blur(50px)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: 10, right: -90, width: 280, height: 280, borderRadius: "50%", background: "#1C9450", opacity: 0.10, filter: "blur(60px)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: 220, left: "40%", width: 160, height: 160, borderRadius: "50%", background: "#D9791F", opacity: 0.08, filter: "blur(50px)", pointerEvents: "none" }} />
-
-      <div style={{ position: "relative" }}>
+      <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="lp-float" style={{ width: 34, height: 34, borderRadius: 10, background: "#17213A", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -818,7 +820,7 @@ function Hub({ courses, progressMap, onOpenCourse }) {
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#17213A", marginBottom: 28, fontFamily: FONT_DISPLAY }}>Let's keep learning! 👋</h1>
 
-        <div className="lp-grid" style={{ maxWidth: 720 }}>
+        <div className="lp-grid">
           {courses.map((c) => {
             const completedLessons = progressMap[c.id]?.completedLessons || [];
             const done = completedLessons.length;

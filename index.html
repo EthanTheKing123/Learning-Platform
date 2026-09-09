@@ -3,9 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sleep Academy</title>
+    <title>Learning Academy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      /* Global reset: without box-sizing: border-box, any element that sets
+         width:100% AND has horizontal padding (this app has many — buttons,
+         cards) renders WIDER than its parent by the padding amount. On a
+         narrow phone that's exactly what pushes content past the screen
+         edge. This one rule fixes it everywhere at once. */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; max-width: 100%; overflow-x: hidden; }
+    </style>
   </head>
-  <body style="margin:0">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
