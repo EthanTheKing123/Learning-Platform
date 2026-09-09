@@ -18,7 +18,7 @@ export const appliedNutrition = {
   id: "applied-nutrition",
   title: "Applied Nutrition",
   tagline: "From macros and creatine to naturopathic and alternative approaches.",
-  restrictedTo: ["first@email.com", "second@email.com"],
+  restrictedTo: ["emmarkarpes@gmail.com", "ethankarpes@gmail.com"],
 
   icon: "apple",
   accent: "#5BA838",
