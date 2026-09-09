@@ -3,4 +3,5 @@
 // object shaped like sleepScience.js, then add it here.
 import { sleepScience } from "./sleepScience.js";
 import { boostPerformance } from "./boostPerformance.js";
-export const COURSES = [sleepScience, boostPerformance];
+import { Studylearning } from "./Studylearning.js";
+export const COURSES = [sleepScience, boostPerformance, Studylearning];
