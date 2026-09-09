@@ -15,7 +15,7 @@
 // See README.md at the project root for the full block-type reference.
 
 export const appliedNutrition = {
-  id: "applied-nutrition",
+  id: "appliednutrition",
   title: "Applied Nutrition",
   tagline: "From macros and creatine to naturopathic and alternative approaches.",
   restrictedTo: ["emmarkarpes@gmail.com", "ethankarpes@gmail.com"],
