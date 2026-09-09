@@ -442,10 +442,11 @@ function StarRow({ percent }) {
   );
 }
 
-function LessonView({ course, module, lesson, onBack, completed, nextLesson, onMarkComplete, onGoModules, onGoHome, onGoNext }) {
+function LessonView({ course, module, lesson, onBack, completed, lastScore, nextLesson, onMarkComplete, onGoModules, onGoHome, onGoNext }) {
+  const [mode, setMode] = useState(completed ? "recap" : "lesson");
   const steps = React.useMemo(() => buildSteps(lesson), [lesson]);
   const quizStartIndex = steps.findIndex((s) => s.type === "quiz");
-  const [stepIndex, setStepIndex] = useState(completed ? steps.length - 1 : 0);
+  const [stepIndex, setStepIndex] = useState(0);
   const [quizResults, setQuizResults] = useState({});
   const markedRef = useRef(false);
 
@@ -464,11 +465,11 @@ function LessonView({ course, module, lesson, onBack, completed, nextLesson, onM
   const percent = lesson.quiz.length ? Math.round((score / lesson.quiz.length) * 100) : 100;
 
   useEffect(() => {
-    if (step.type === "results" && passed && !markedRef.current) {
+    if (mode === "lesson" && step.type === "results" && passed && !markedRef.current) {
       markedRef.current = true;
-      onMarkComplete();
+      onMarkComplete(score, lesson.quiz.length);
     }
-  }, [step, passed, onMarkComplete]);
+  }, [mode, step, passed, onMarkComplete]);
 
   const primaryBtn = (bg, label, onClick, extra) => (
     <button
@@ -484,6 +485,32 @@ function LessonView({ course, module, lesson, onBack, completed, nextLesson, onM
       {label}
     </button>
   );
+
+  if (mode === "recap") {
+    const lastPercent = lastScore && lastScore.total ? Math.round((lastScore.score / lastScore.total) * 100) : null;
+    return (
+      <div className="lp-shell-narrow">
+        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0, fontWeight: 700 }}>
+          <ArrowLeft size={16} /> Module {module.number}
+        </button>
+        <div className="lp-pop" style={{ textAlign: "center", paddingTop: 24 }}>
+          <div className="lp-float" style={{ width: 76, height: 76, borderRadius: "50%", background: "#EAFAF0", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <Check size={34} color="#1C9450" />
+          </div>
+          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: course.accent, marginBottom: 6 }}>LESSON {lesson.id}</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: course.ink, marginBottom: 10, fontFamily: FONT_DISPLAY }}>{lesson.title}</h1>
+          {lastPercent !== null && <StarRow percent={lastPercent} />}
+          <p style={{ fontSize: 15.5, color: "#8A8FA0", marginBottom: 28, fontWeight: 600 }}>
+            {lastScore ? `You've already passed this — scored ${lastScore.score}/${lastScore.total} last time.` : "You've already completed this lesson."}
+          </p>
+          {primaryBtn(course.accent, "Redo the lesson", () => setMode("lesson"))}
+          {ghostBtn("Back to modules", onGoModules)}
+          {ghostBtn("Back to home", onGoHome)}
+          <p style={{ fontSize: 12, color: "#B0AEC4", marginTop: 14, fontWeight: 600 }}>Redoing won't undo your progress — this lesson stays marked complete either way.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="lp-shell-narrow">
@@ -543,7 +570,7 @@ function LessonView({ course, module, lesson, onBack, completed, nextLesson, onM
           {passed ? (
             <>
               {nextLesson ? (
-                primaryBtn(course.accent, `Next: ${nextLesson.lesson.id} ${nextLesson.lesson.title} →`, onGoNext)
+                primaryBtn(course.accent, `Next: ${nextLesson.lesson.id} ${nextLesson.lesson.title} →`, () => onGoNext(score, lesson.quiz.length))
               ) : (
                 primaryBtn("#1C9450", "You finished the course! 🎉", onGoModules)
               )}
@@ -644,7 +671,7 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
     const prevComplete = i === 0 || isModuleComplete(course.modules[i - 1]);
     return prevComplete && !isModuleComplete(m);
   });
-  const offsets = [0, -46, -70, -46, 0, 46, 70, 46];
+  const offsets = [0, -28, -42, -28, 0, 28, 42, 28];
   const sectionOrder = [...new Set(course.modules.map((m) => m.section))];
 
   return (
@@ -791,7 +818,7 @@ function Hub({ courses, progressMap, onOpenCourse }) {
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#17213A", marginBottom: 28, fontFamily: FONT_DISPLAY }}>Let's keep learning! 👋</h1>
 
-        <div className="lp-grid">
+        <div className="lp-grid" style={{ maxWidth: 720 }}>
           {courses.map((c) => {
             const completedLessons = progressMap[c.id]?.completedLessons || [];
             const done = completedLessons.length;
@@ -860,11 +887,14 @@ export default function LearningPlatform() {
     })();
   }, []);
 
-  const completeLesson = useCallback((courseId, lessonId) => {
+  const completeLesson = useCallback((courseId, lessonId, score, total) => {
     setProgressMap((prev) => {
-      const cur = prev[courseId] || { completedLessons: [] };
-      if (cur.completedLessons.includes(lessonId)) return prev;
-      const next = { ...cur, completedLessons: [...cur.completedLessons, lessonId] };
+      const cur = prev[courseId] || { completedLessons: [], scores: {} };
+      const alreadyDone = cur.completedLessons.includes(lessonId);
+      const next = {
+        completedLessons: alreadyDone ? cur.completedLessons : [...cur.completedLessons, lessonId],
+        scores: { ...(cur.scores || {}), [lessonId]: { score, total, at: Date.now() } },
+      };
       saveProgress(courseId, next);
       return { ...prev, [courseId]: next };
     });
@@ -908,17 +938,19 @@ export default function LearningPlatform() {
         const next = getNextLesson(view.course, view.module, view.lesson);
         return (
           <LessonView
+            key={view.lesson.id}
             course={view.course}
             module={view.module}
             lesson={view.lesson}
             completed={(progressMap[view.course.id]?.completedLessons || []).includes(view.lesson.id)}
+            lastScore={progressMap[view.course.id]?.scores?.[view.lesson.id] || null}
             nextLesson={next}
             onBack={() => setView({ screen: "module", course: view.course, module: view.module })}
-            onMarkComplete={() => completeLesson(view.course.id, view.lesson.id)}
+            onMarkComplete={(score, total) => completeLesson(view.course.id, view.lesson.id, score, total)}
             onGoModules={() => setView({ screen: "module", course: view.course, module: view.module })}
             onGoHome={() => setView({ screen: "hub" })}
-            onGoNext={() => {
-              completeLesson(view.course.id, view.lesson.id);
+            onGoNext={(score, total) => {
+              completeLesson(view.course.id, view.lesson.id, score, total);
               setView({ screen: "lesson", course: view.course, module: next.module, lesson: next.lesson });
             }}
           />
