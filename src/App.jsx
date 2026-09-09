@@ -893,18 +893,25 @@ function getNextLesson(course, module, lesson) {
   return null;
 }
 
-export default function LearningPlatform() {
+export default function LearningPlatform({ user }) {
   const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
 
+  // A course with no `restrictedTo` field is visible to everyone. A course
+  // with `restrictedTo: ["someone@email.com"]` only shows for that account.
+  const visibleCourses = COURSES.filter(
+    (c) => !c.restrictedTo || (user?.email && c.restrictedTo.includes(user.email))
+  );
+
   useEffect(() => {
     (async () => {
-      const entries = await Promise.all(COURSES.map(async (c) => [c.id, await loadProgress(c.id)]));
+      const entries = await Promise.all(visibleCourses.map(async (c) => [c.id, await loadProgress(c.id)]));
       setProgressMap(Object.fromEntries(entries));
       setLoaded(true);
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   const completeLesson = useCallback((courseId, lessonId, score, total) => {
     setProgressMap((prev) => {
@@ -938,7 +945,7 @@ export default function LearningPlatform() {
           matching CSS rules: full-width, no-gap divs, on every device. */}
       <style>{GLOBAL_STYLE}</style>
       {view.screen === "hub" && (
-        <Hub courses={COURSES} progressMap={progressMap} onOpenCourse={(c) => setView({ screen: "course", course: c })} />
+        <Hub courses={visibleCourses} progressMap={progressMap} onOpenCourse={(c) => setView({ screen: "course", course: c })} />
       )}
       {view.screen === "course" && (
         <CourseMap

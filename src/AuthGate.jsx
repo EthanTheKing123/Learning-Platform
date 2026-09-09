@@ -135,7 +135,7 @@ export default function AuthGate({ children }) {
           <LogOut size={14} /> Sign out{user.email ? ` (${user.email})` : ""}
         </button>
       </div>
-      {children}
+      {React.cloneElement(children, { user })}
     </div>
   );
 }
