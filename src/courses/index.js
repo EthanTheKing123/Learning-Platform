@@ -4,4 +4,5 @@
 import { sleepScience } from "./sleepScience.js";
 import { boostPerformance } from "./boostPerformance.js";
 import { studyLearning } from "./studyskills.js";
-export const COURSES = [sleepScience, boostPerformance, studyLearning];
+import { chemistryoutcomes } from "./chemistryoutcomes.js";
+export const COURSES = [sleepScience, boostPerformance, studyLearning, chemistryoutcomes ];
