@@ -11,6 +11,7 @@ export const studyLearning = {
   id: "study-learning",
   title: "Study & Learning",
   tagline: "How memory actually works, and the techniques that genuinely improve it.",
+  icon: "brain", // shown on the Hub card + course header — see COURSE_ICONS in App.jsx
   accent: "#D9791F",       // warm orange — distinct from the other two courses
   ink: "#17213A",
   modules: [

@@ -11,6 +11,7 @@ export const boostPerformance = {
   id: "boost-performance",
   title: "Boost Your Performance",
   tagline: "Leadership, motivation, biomechanics, feedback, tech & fitness — for the Term 3 Cycle Test.",
+  icon: "dumbbell", // shown on the Hub card + course header — see COURSE_ICONS in App.jsx
   accent: "#1C9450",       // green — distinct from Sleep Science's blue
   ink: "#17213A",          // deep navy — same as Sleep Science, for a consistent app-wide feel
   modules: [

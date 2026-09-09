@@ -18,6 +18,7 @@ export const sleepScience = {
   id: "sleep-science",
   title: "Sleep Science",
   tagline: "From what sleep is, to how to use it well.",
+  icon: "moon", // shown on the Hub card + course header — see COURSE_ICONS in App.jsx
   accent: "#2E7FD1",       // vibrant blue — used for progress, buttons, highlights
   ink: "#17213A",          // deep navy — used for headers, dark surfaces
   modules: [

@@ -1,5 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon } from "lucide-react";
+import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain } from "lucide-react";
+
+// Maps the short string each course sets as `icon` (e.g. "brain") to the
+// actual lucide component. Add a new line here whenever a new course wants
+// an icon that isn't already in this list — the string in the course file
+// never has to import anything itself.
+const COURSE_ICONS = {
+  moon: Moon,
+  dumbbell: Dumbbell,
+  brain: Brain,
+};
+function CourseIcon({ name, ...props }) {
+  const Icon = COURSE_ICONS[name] || BookOpen; // falls back to BookOpen if a course forgets to set one
+  return <Icon {...props} />;
+}
 import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress } from "./storage.js";
 
@@ -682,9 +696,14 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
         <ArrowLeft size={16} /> All courses
       </button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 30, gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 27, fontWeight: 800, color: course.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{course.title}</h1>
-          <p style={{ fontSize: 15, color: "#6B7080", margin: 0, fontWeight: 600 }}>{course.tagline}</p>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: course.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+            <CourseIcon name={course.icon} size={19} color={textOn(course.accent)} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 27, fontWeight: 800, color: course.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{course.title}</h1>
+            <p style={{ fontSize: 15, color: "#6B7080", margin: 0, fontWeight: 600 }}>{course.tagline}</p>
+          </div>
         </div>
         <button
           className="lp-btn"
@@ -807,7 +826,7 @@ function Hub({ courses, progressMap, onOpenCourse }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="lp-float" style={{ width: 34, height: 34, borderRadius: 10, background: "#17213A", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Moon size={18} color="#fff" />
+              <GraduationCap size={18} color="#fff" />
             </div>
             <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.4, color: "#8A8FA0", margin: 0 }}>YOUR ACADEMY</p>
           </div>
@@ -830,7 +849,7 @@ function Hub({ courses, progressMap, onOpenCourse }) {
               <button key={c.id} className="lp-btn lp-card" onClick={() => onOpenCourse(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer", boxShadow: "0 3px 0 rgba(23,33,58,0.05)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                   <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Moon size={22} color={textOn(c.accent)} />
+                    <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
                   </div>
                   <div>
                     <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>

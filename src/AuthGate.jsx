@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Moon, LogOut } from "lucide-react";
+import { GraduationCap, LogOut } from "lucide-react";
 import { auth } from "./firebase.js";
 import {
   onAuthStateChanged,
@@ -67,7 +67,7 @@ function SignInScreen() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FFFFFF", fontFamily: '"Nunito", ui-rounded, "Segoe UI", sans-serif', padding: 20 }}>
       <div style={{ width: "100%", maxWidth: 380, textAlign: "center" }}>
         <div style={{ width: 56, height: 56, borderRadius: 16, background: "#17213A", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
-          <Moon size={26} color="#fff" />
+          <GraduationCap size={26} color="#fff" />
         </div>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: "#17213A", marginBottom: 6, fontFamily: '"Baloo 2", "Nunito", sans-serif' }}>Learning Academy</h1>
         <p style={{ fontSize: 15, color: "#6B7080", marginBottom: 28, fontWeight: 600 }}>Sign in to save your progress across devices.</p>
