@@ -1,6 +1,17 @@
 // Sleep Science course data.
 // This is the ONLY file to touch when adding lessons to this course.
 // Shape: modules -> lessons -> content blocks (+ a quiz per lesson).
+//
+// QUESTION TYPES — every quiz item, and every mid-lesson "check" block,
+// can use one of four answer formats by setting `type` (quiz items) or
+// `qtype` (check blocks — `type` is already used there to mark it as a
+// checkpoint). Leaving it out defaults to "mcq".
+//
+//   mcq (default)  { q, options, correct, explain? }              — tap one option
+//   truefalse      { q, correct: true|false, explain? }           — tap True/False
+//   multi          { q, options, correct: [i, j], explain? }      — select ALL that apply
+//   type           { q, accepted: ["answer", "alt answer"], explain? } — type the answer
+//
 // See README.md at the project root for the full block-type reference.
 
 export const sleepScience = {
@@ -31,12 +42,14 @@ export const sleepScience = {
             ]},
             { type: "h", text: "The neurological criteria" },
             { type: "p", text: "Behaviour alone isn't enough — plenty of animals sit still without sleeping. So scientists also require a specific, measurable brain signature, recorded with an **EEG (electroencephalogram)**: sleep produces distinct, repeating patterns of electrical activity that are different from both waking and from the flat-line pattern of unconsciousness under anaesthesia." },
+            { type: "check", qtype: "truefalse", q: "An EEG is used to measure the brain-activity criterion for sleep.", correct: true, explain: "EEG (electroencephalogram) records the brain's electrical activity and is exactly how the neurological criterion is measured." },
             { type: "callout", text: "The key distinction to hold onto: sleep is a brain state you can be rapidly pulled out of. Coma and general anaesthesia are not — that reversibility is the line between sleep and unconsciousness." },
           ],
           quiz: [
             { q: "Which of these is a defining feature of sleep but NOT of coma?", options: ["Reduced responsiveness", "Rapid reversibility (can be woken quickly)", "Lying still", "Reduced muscle tone"], correct: 1 },
             { q: "What tool is used to measure the brain-activity criterion for sleep?", options: ["MRI", "EEG", "Thermometer", "Pulse oximeter"], correct: 1 },
             { q: "What happens after a period of sleep deprivation that doesn't happen after a period without 'rest'?", options: ["Nothing measurable", "The body sleeps harder/longer to recover the loss", "Heart rate permanently increases", "Appetite disappears"], correct: 1 },
+            { type: "truefalse", q: "Sleep can be defined by behaviour alone, without looking at brain activity.", correct: false, explain: "Scientists require BOTH behavioural signs and a specific EEG signature — behaviour alone isn't enough, since plenty of still animals aren't asleep." },
           ],
         },
         {
@@ -58,6 +71,7 @@ export const sleepScience = {
             { q: "What is the main difference between sleep and quiet rest?", options: ["Rest happens lying down", "Rest doesn't involve a distinct, cycling sleep-specific brain state", "Sleep only happens at night", "There is no real difference"], correct: 1 },
             { q: "Why is anaesthesia not classed as sleep, even though the EEG can look similar to deep sleep?", options: ["It happens in a hospital", "You can't wake yourself up from it — reversibility is externally controlled", "It's too short", "It only affects the heart"], correct: 1 },
             { q: "What do hibernating animals periodically do that reveals sleep and hibernation aren't the same thing?", options: ["They eat", "They wake up specifically to sleep", "They raise their body temperature permanently", "They stop breathing"], correct: 1 },
+            { type: "type", q: "Fill in the blank: hibernating animals periodically wake up specifically to ______.", accepted: ["sleep", "to sleep"], explain: "That's the key fact from this lesson — hibernation and sleep aren't the same state, since animals interrupt one to get the other." },
           ],
         },
         {
@@ -73,6 +87,7 @@ export const sleepScience = {
             { type: "p", text: "During sleep, the brain's waste-clearance system (the glymphatic system — covered in depth in Module 6) becomes far more active, flushing out metabolic byproducts that build up during waking hours. This is a strong candidate for *why sleep specifically requires unconsciousness* — the clearing process seems to need the brain to be offline to work efficiently." },
             { type: "h", text: "Memory & learning theory" },
             { type: "p", text: "Sleep — particularly certain stages — appears to be when the brain consolidates the day's learning, strengthening useful neural connections and pruning weaker ones. This is one of the best-supported theories today and will come up repeatedly through this course." },
+            { type: "check", qtype: "multi", q: "Which of these are among the leading theories for why sleep evolved?", options: ["Energy conservation", "Restoration/repair", "Memory consolidation", "Random chance with no function"], correct: [0, 1, 2], explain: "Energy conservation, restoration, and memory consolidation (plus brain maintenance) are the leading theories — 'no function' isn't one of them, given how costly sleep is." },
             { type: "callout", text: "The honest scientific answer: sleep probably evolved for more than one reason, and different theories explain different pieces of the puzzle rather than competing to be the single 'true' one." },
           ],
           quiz: [
@@ -97,6 +112,7 @@ export const sleepScience = {
             { q: "What did Aserinsky and Kleitman discover in 1953?", options: ["Sleep apnea", "REM sleep", "The circadian rhythm", "Melatonin"], correct: 1 },
             { q: "How did researchers first strongly link REM sleep to dreaming?", options: ["By scanning brains with MRI", "By waking people during REM and finding vivid dream reports were far more common", "By asking people to keep dream diaries", "It was assumed, not tested"], correct: 1 },
             { q: "Why was the discovery of REM sleep so significant for the field?", options: ["It proved sleep was one uniform state", "It showed sleep had internal structure, opening up precise research questions", "It ended sleep research", "It disproved the existence of dreams"], correct: 1 },
+            { type: "truefalse", q: "REM sleep was discovered before scientists had any way to study sleep's internal structure.", correct: true, explain: "Exactly — before 1953, there was no objective way to say sleep had internal structure at all. REM's discovery is what opened that door." },
           ],
         },
       ],
@@ -124,6 +140,7 @@ export const sleepScience = {
             { q: "What does a polysomnogram combine?", options: ["Just brain activity", "EEG, EOG, and EMG together", "Heart rate only", "Blood oxygen only"], correct: 1 },
             { q: "Why is EEG alone sometimes not enough to identify REM sleep?", options: ["EEG doesn't work during sleep", "REM brainwaves can superficially resemble waking, so eye and muscle signals are needed to confirm it", "EEG only measures heart rate", "REM has no brain activity"], correct: 1 },
             { q: "What does EOG track?", options: ["Muscle tone", "Eye movement", "Heart rate", "Body temperature"], correct: 1 },
+            { type: "multi", q: "Which THREE signals together make up a polysomnogram?", options: ["EEG", "EOG", "EMG", "ECG (heart rhythm)"], correct: [0, 1, 2], explain: "EEG (brain), EOG (eyes), and EMG (muscles) are the three — a standard PSG doesn't require heart-rhythm monitoring." },
           ],
         },
         {
@@ -139,14 +156,14 @@ export const sleepScience = {
             { type: "term", term: "K-complex", definition: "A single large, sharp brainwave seen in Stage 2 — appears both spontaneously and in response to outside stimuli, possibly suppressing arousal." },
             { type: "h", text: "Stage 3 — deep / slow-wave sleep" },
             { type: "p", text: "The deepest NREM stage, dominated by large, slow **delta waves**. This is the hardest stage to be woken from, and if you are woken from it, you'll usually feel the most disoriented (this connects directly to sleep inertia, covered in Module 3). Stage 3 is when the body does the most physical repair work — see Module 6." },
-            { type: "check", qtype: "multi", q: "Which of these are true of Stage 2 sleep? (select all that apply)", options: ["It features sleep spindles", "It features K-complexes", "It's the deepest NREM stage", "You spend more total time in it than any other stage"], correct: [0, 1, 3], explain: "Stage 2 has spindles and K-complexes and takes up the most total sleep time — but Stage 3, not Stage 2, is the deepest." },
+            { type: "check", q: "Which stage features sleep spindles and K-complexes?", options: ["Stage 1", "Stage 2", "Stage 3"], correct: 1, explain: "Sleep spindles and K-complexes are the defining EEG features of Stage 2." },
             { type: "callout", text: "Depth order to remember: **Stage 1 (lightest) → Stage 2 (spindles/K-complexes) → Stage 3 (deepest, delta waves, hardest to wake from).**" },
           ],
           quiz: [
             { q: "Which NREM stage do you spend the most total time in across a night?", options: ["Stage 1", "Stage 2", "Stage 3"], correct: 1 },
             { q: "What type of brainwave dominates Stage 3?", options: ["Fast spindles", "Delta waves (large, slow)", "K-complexes only", "REM-like fast waves"], correct: 1 },
             { q: "Which stage is easiest to be woken from?", options: ["Stage 1", "Stage 2", "Stage 3"], correct: 0 },
-            { q: "Type the term: the brief bursts of fast brain activity seen in Stage 2, linked to memory consolidation.", qtype: "text", accept: ["sleep spindle", "sleep spindles", "spindle", "spindles"] },
+            { type: "type", q: "What are the large, slow brainwaves that dominate Stage 3 called?", accepted: ["delta waves", "delta wave", "delta"], explain: "Stage 3 (deep/slow-wave sleep) is dominated by large, slow delta waves." },
           ],
         },
         {
@@ -160,7 +177,7 @@ export const sleepScience = {
               "**Muscle atonia** — near-total paralysis of the skeletal muscles, picked up as a flatline on the EMG. This is the body's built-in safety mechanism, preventing you from physically acting out what's happening in a dream.",
             ]},
             { type: "p", text: "This is also the stage most strongly associated with vivid, narrative dreaming, as Dement's waking experiments (Module 1) demonstrated. Vivid dreams can occur in NREM sleep too, but they're less frequent and less bizarre/story-like — this gets its own deep-dive in Module 7." },
-            { type: "check", qtype: "multi", q: "Which of these are true during REM sleep? (select all that apply)", options: ["Muscle tone drops to near-flatline (atonia)", "The eyes move rapidly behind closed lids", "Brain activity looks similar to waking on an EEG", "It's the deepest, hardest stage to wake from"], correct: [0, 1, 2], explain: "Deep, hardest-to-wake-from sleep is Stage 3 (NREM), not REM — REM's brain activity is closer to waking." },
+            { type: "check", qtype: "truefalse", q: "During REM sleep, the EMG typically shows near-flatline muscle activity.", correct: true, explain: "REM atonia means the EMG signal drops to near-flat — the muscles are essentially switched off." },
             { type: "h", text: "Why 'paradoxical'?" },
             { type: "p", text: "Because the brain is highly active — similar to waking on an EEG trace — while the body is nearly paralysed. Active brain, inactive body: that contradiction is the paradox the name refers to." },
             { type: "callout", text: "If you ever see a question asking why REM is called 'paradoxical sleep,' the answer is always this contradiction: **active brain, paralysed body.**" },
@@ -169,7 +186,6 @@ export const sleepScience = {
             { q: "Why is REM sleep called 'paradoxical'?", options: ["Because it never happens", "Because the brain is highly active while the body is nearly paralysed", "Because it only happens in dreams", "Because it happens during the day"], correct: 1 },
             { q: "What function does REM muscle atonia serve?", options: ["Improves digestion", "Prevents physically acting out dreams", "Increases heart rate", "Helps with breathing"], correct: 1 },
             { q: "Which signal picks up the defining eye movements of REM sleep?", options: ["EEG", "EOG", "EMG"], correct: 1 },
-            { q: "Type the term: REM sleep's nickname, referring to the contradiction between an active brain and a paralysed body.", qtype: "text", accept: ["paradoxical sleep", "paradoxical"] },
           ],
         },
         {
@@ -191,6 +207,7 @@ export const sleepScience = {
           quiz: [
             { q: "What does a hypnogram plot?", options: ["Heart rate over time", "Sleep stage against time across the night", "Room temperature", "Calories burned"], correct: 1 },
             { q: "Where do REM periods typically appear on a hypnogram?", options: ["Only at the very start", "As separate raised sections recurring through the night", "Never — REM isn't shown", "Only in Stage 3"], correct: 1 },
+            { type: "truefalse", q: "Brief 'awake' blips on a hypnogram usually mean a sleep disorder.", correct: false, explain: "Brief awakenings are completely normal — everyone has several a night, usually without remembering them." },
             { q: "Are brief 'awake' blips on a hypnogram unusual?", options: ["Yes, they indicate a sleep disorder", "No, brief awakenings are normal and usually not remembered", "Yes, they mean the person didn't sleep at all", "They only happen in REM"], correct: 1 },
           ],
         },
