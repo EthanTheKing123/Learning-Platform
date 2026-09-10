@@ -18,6 +18,65 @@ import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress } from "./storage.js";
 import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
 
+/* ============================================================
+   SPACED REPETITION (Leitner-style "daily review" system)
+   ============================================================
+   Each completed lesson gets a review entry: { box, lastReviewed, nextDue }.
+   Box 1-5, each with a growing gap — get the review question right and the
+   lesson moves up a box (a longer wait next time); get it wrong and it
+   drops back to Box 1 (due again tomorrow). A lesson only ENTERS this
+   system once its whole module is complete (see completeLesson below),
+   not the instant that one lesson finishes.
+   This lives entirely in the existing progress object storage.js already
+   saves to Firestore — storage.js itself needed zero changes, since
+   loadProgress/saveProgress just persist whatever shape they're given. */
+const REVIEW_BOX_DAYS = [1, 3, 7, 14, 30]; // index 0 = Box 1
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+function addDays(dateStr, days) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function newReviewEntry() {
+  const today = todayStr();
+  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]) };
+}
+function advanceReviewEntry(entry, wasCorrect) {
+  const today = todayStr();
+  if (wasCorrect) {
+    const nextBox = Math.min((entry?.box || 1) + 1, REVIEW_BOX_DAYS.length);
+    return { box: nextBox, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[nextBox - 1]) };
+  }
+  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]) };
+}
+// Every due lesson contributes ONE question to the single combined daily
+// review quiz. Which question is picked shifts by the day (not random on
+// every render), so revisiting a lesson tomorrow surfaces a different
+// question from its existing quiz instead of the exact same one each time.
+function pickReviewQuestion(lesson) {
+  const quiz = lesson.quiz || [];
+  if (quiz.length === 0) return null;
+  const dayIndex = Math.floor(Date.now() / 86400000);
+  return quiz[(dayIndex + lesson.id.length) % quiz.length];
+}
+function getDueReviews(courses, progressMap) {
+  const today = todayStr();
+  const due = [];
+  courses.forEach((course) => {
+    const review = progressMap[course.id]?.review || {};
+    course.modules.forEach((module) => {
+      module.lessons.forEach((lesson) => {
+        const entry = review[lesson.id];
+        if (entry && entry.nextDue <= today) due.push({ course, module, lesson });
+      });
+    });
+  });
+  return due;
+}
+
 // Picks readable text (white vs. navy) based on the background colour's brightness —
 // used anywhere a dynamic/vibrant background hosts text or an icon.
 function textOn(hex) {
@@ -826,7 +885,83 @@ function CurriculumView({ course, completedLessons, onBack }) {
    HUB — course picker (multi-course home)
    ============================================================ */
 
-function Hub({ courses, progressMap, onOpenCourse }) {
+/* ============================================================
+   DAILY REVIEW (spaced repetition session)
+   ============================================================
+   All of today's due lessons, across every course, combined into ONE
+   sequential quiz — reusing the same Question component (and its built-in
+   explain-on-wrong feedback) that regular lessons use. No new content is
+   needed: each question is pulled straight from that lesson's existing quiz. */
+function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
+  const [items] = useState(() =>
+    dueList.map((item) => ({ ...item, question: pickReviewQuestion(item.lesson) })).filter((item) => item.question)
+  );
+  const [index, setIndex] = useState(0);
+  const [results, setResults] = useState([]); // { item, correct }
+
+  if (items.length === 0) {
+    return (
+      <div className="lp-shell-narrow">
+        <p style={{ fontSize: 15, color: "#8A8FA0", fontWeight: 700, marginBottom: 16 }}>Nothing due for review right now.</p>
+        <button onClick={onExit} className="lp-btn" style={{ padding: "12px 20px", borderRadius: 12, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, cursor: "pointer", fontFamily: FONT_DISPLAY }}>Back home</button>
+      </div>
+    );
+  }
+
+  if (index >= items.length) {
+    const correctCount = results.filter((r) => r.correct).length;
+    const missed = results.filter((r) => !r.correct);
+    return (
+      <div className="lp-shell-narrow">
+        <div className="lp-pop">
+          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 6 }}>DAILY REVIEW</p>
+          <h1 style={{ fontSize: 25, fontWeight: 800, color: "#17213A", marginBottom: 14, fontFamily: FONT_DISPLAY }}>{correctCount}/{items.length} correct</h1>
+          {missed.length === 0 ? (
+            <p style={{ fontSize: 15, color: "#166A3C", fontWeight: 700, marginBottom: 20 }}>Perfect — every one of these just moved up a review box. 🎉</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 14.5, color: "#8A8FA0", fontWeight: 600, marginBottom: 14 }}>These went back to Box 1 — worth a proper revisit:</p>
+              {missed.map(({ item }) => (
+                <button
+                  key={item.course.id + item.lesson.id}
+                  onClick={() => onRevisitLesson(item.course, item.module, item.lesson)}
+                  className="lp-btn"
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", background: "#FFF7E0", border: "2px solid #FDECC8", borderRadius: 14, padding: "12px 16px", marginBottom: 10, cursor: "pointer" }}
+                >
+                  <div>
+                    <p style={{ fontSize: 12.5, fontWeight: 800, color: "#8A6A00", margin: 0 }}>{item.course.title} · Lesson {item.lesson.id}</p>
+                    <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: 0 }}>{item.lesson.title}</p>
+                  </div>
+                  <ChevronRight size={18} color="#B0AEC4" />
+                </button>
+              ))}
+            </>
+          )}
+          <button onClick={onExit} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 15.5, cursor: "pointer", marginTop: 8, fontFamily: FONT_DISPLAY }}>Done</button>
+        </div>
+      </div>
+    );
+  }
+
+  const current = items[index];
+  return (
+    <div className="lp-shell-narrow">
+      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>DAILY REVIEW · {index + 1} of {items.length}</p>
+      <p style={{ fontSize: 12.5, color: "#B0AEC4", fontWeight: 700, marginBottom: 16 }}>{current.course.title} · Lesson {current.lesson.id} — {current.lesson.title}</p>
+      <Question
+        key={current.course.id + current.lesson.id}
+        data={current.question}
+        onAnswered={(isCorrect) => {
+          onAnswer(current.course.id, current.lesson.id, isCorrect);
+          setResults((r) => [...r, { item: current, correct: isCorrect }]);
+          setIndex((i) => i + 1);
+        }}
+      />
+    </div>
+  );
+}
+
+function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview }) {
   const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
   return (
     <div className="lp-shell-wide">
@@ -844,6 +979,25 @@ function Hub({ courses, progressMap, onOpenCourse }) {
           </div>
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#17213A", marginBottom: 28, fontFamily: FONT_DISPLAY }}>Let's keep learning! 👋</h1>
+
+        {dueCount > 0 && (
+          <button
+            onClick={onOpenReview}
+            className="lp-btn"
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "#FFF7E0", border: "2px solid #FDECC8", borderRadius: 18, padding: "16px 20px", marginBottom: 24, cursor: "pointer", textAlign: "left" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "#D9791F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <RotateCw size={19} color="#fff" />
+              </div>
+              <div>
+                <p style={{ fontSize: 12.5, fontWeight: 800, color: "#8A6A00", margin: 0, letterSpacing: 0.3 }}>DAILY REVIEW</p>
+                <p style={{ fontSize: 16, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>{dueCount} review{dueCount === 1 ? "" : "s"} due today</p>
+              </div>
+            </div>
+            <ChevronRight size={20} color="#D9791F" />
+          </button>
+        )}
 
         <div className="lp-grid">
           {courses.map((c) => {
@@ -902,7 +1056,7 @@ function getNextLesson(course, module, lesson) {
 }
 
 export default function LearningPlatform({ user }) {
-  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson
+  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
 
@@ -923,12 +1077,40 @@ export default function LearningPlatform({ user }) {
 
   const completeLesson = useCallback((courseId, lessonId, score, total) => {
     setProgressMap((prev) => {
-      const cur = prev[courseId] || { completedLessons: [], scores: {} };
+      const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
       const alreadyDone = cur.completedLessons.includes(lessonId);
+      const completedLessons = alreadyDone ? cur.completedLessons : [...cur.completedLessons, lessonId];
+      const review = { ...(cur.review || {}) };
+
+      // Seed the spaced-repetition queue the moment every lesson in THIS
+      // lesson's module is complete — not the instant this one lesson
+      // finishes (per the "only after finishing a module" decision). Only
+      // ever ADDS new entries, never overwrites one that already exists,
+      // so a lesson already progressing through review boxes never resets.
+      const course = COURSES.find((c) => c.id === courseId);
+      const module = course?.modules.find((m) => m.lessons.some((l) => l.id === lessonId));
+      if (module && module.lessons.every((l) => completedLessons.includes(l.id))) {
+        module.lessons.forEach((l) => { if (!review[l.id]) review[l.id] = newReviewEntry(); });
+      }
+
       const next = {
-        completedLessons: alreadyDone ? cur.completedLessons : [...cur.completedLessons, lessonId],
+        completedLessons,
         scores: { ...(cur.scores || {}), [lessonId]: { score, total, at: Date.now() } },
+        review,
       };
+      saveProgress(courseId, next);
+      return { ...prev, [courseId]: next };
+    });
+  }, []);
+
+  // Called once per question during a daily review session — advances (or
+  // resets) that lesson's Leitner box based on whether it was answered
+  // correctly, and persists it the same way completeLesson does.
+  const recordReview = useCallback((courseId, lessonId, wasCorrect) => {
+    setProgressMap((prev) => {
+      const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
+      const nextEntry = advanceReviewEntry(cur.review?.[lessonId], wasCorrect);
+      const next = { ...cur, review: { ...(cur.review || {}), [lessonId]: nextEntry } };
       saveProgress(courseId, next);
       return { ...prev, [courseId]: next };
     });
@@ -953,7 +1135,21 @@ export default function LearningPlatform({ user }) {
           matching CSS rules: full-width, no-gap divs, on every device. */}
       <style>{GLOBAL_STYLE}</style>
       {view.screen === "hub" && (
-        <Hub courses={visibleCourses} progressMap={progressMap} onOpenCourse={(c) => setView({ screen: "course", course: c })} />
+        <Hub
+          courses={visibleCourses}
+          progressMap={progressMap}
+          dueCount={getDueReviews(visibleCourses, progressMap).length}
+          onOpenCourse={(c) => setView({ screen: "course", course: c })}
+          onOpenReview={() => setView({ screen: "review" })}
+        />
+      )}
+      {view.screen === "review" && (
+        <ReviewSession
+          dueList={getDueReviews(visibleCourses, progressMap)}
+          onAnswer={recordReview}
+          onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
+          onExit={() => setView({ screen: "hub" })}
+        />
       )}
       {view.screen === "course" && (
         <CourseMap
