@@ -1,1232 +1,1773 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain } from "lucide-react";
+// Applied Nutrition course data.
+// This is the ONLY file to touch when adding lessons to this course.
+// Shape: modules -> lessons -> content blocks (+ a quiz per lesson).
+//
+// QUESTION TYPES — every quiz item, and every mid-lesson "check" block,
+// can use one of four answer formats by setting `type` (quiz items) or
+// `qtype` (check blocks — `type` is already used there to mark it as a
+// checkpoint). Leaving it out defaults to "mcq".
+//
+//   mcq (default)  { q, options, correct, explain? }              — tap one option
+//   truefalse      { q, correct: true|false, explain? }           — tap True/False
+//   multi          { q, options, correct: [i, j], explain? }      — select ALL that apply
+//   type           { q, accepted: ["answer", "alt answer"], explain? } — type the answer
+//
+// See README.md at the project root for the full block-type reference.
 
-// Maps the short string each course sets as `icon` (e.g. "brain") to the
-// actual lucide component. Add a new line here whenever a new course wants
-// an icon that isn't already in this list — the string in the course file
-// never has to import anything itself.
-const COURSE_ICONS = {
-  moon: Moon,
-  dumbbell: Dumbbell,
-  brain: Brain,
+export const appliedNutrition = {
+  id: "applied-nutrition",
+  title: "Applied Nutrition",
+  tagline: "From macros and creatine to naturopathic and alternative approaches.",
+  icon: "apple",
+  accent: "#5BA838",
+  ink: "#1A1A2E",
+  modules: [
+    {
+      id: "m1",
+      number: 1,
+      section: "Foundations",
+      title: "Foundations",
+      description: "What nutrition really is, macronutrients, micronutrients, and competing paradigms.",
+      lessons: [
+        {
+          id: "1.1",
+          title: "Macronutrients vs Micronutrients",
+          blocks: [
+            { type: "p", text: "Nutrition isn't just about calories — it's about the specific compounds your body needs to function. These are divided into **macronutrients** (needed in large amounts) and **micronutrients** (needed in smaller amounts, but equally essential)." },
+            { type: "term", term: "Macronutrients", definition: "Nutrients needed in large amounts: carbohydrates, proteins, fats, and water. Provide energy and building blocks." },
+            { type: "term", term: "Micronutrients", definition: "Nutrients needed in smaller amounts: vitamins and minerals. Essential for enzyme function, signalling, and cellular processes." },
+            { type: "h", text: "The four macronutrients" },
+            { type: "list", items: [
+              "**Carbohydrates** (4 kcal/g): Primary energy source, especially for high-intensity activity and brain function.",
+              "**Protein** (4 kcal/g): Building blocks for muscle, enzymes, hormones, immune function. Made of amino acids.",
+              "**Fats** (9 kcal/g): Energy storage, cell membrane structure, hormone production, absorption of fat-soluble vitamins.",
+              "**Water**: Not technically a 'macro' but needed in largest amounts. Essential for every cellular process.",
+            ]},
+            { type: "h", text: "Micronutrient categories" },
+            { type: "list", items: [
+              "**Fat-soluble vitamins** (A, D, E, K): Stored in body fat; don't need daily intake but can accumulate to toxic levels.",
+              "**Water-soluble vitamins** (B-complex, C): Not stored well; need regular replenishment; excess excreted in urine.",
+              "**Minerals**: Divided into macrominerals (calcium, magnesium, potassium, sodium) and trace minerals (iron, zinc, selenium, iodine).",
+            ]},
+            { type: "h", text: "Why the distinction matters" },
+            { type: "p", text: "You can hit your macros on junk food, but you'll be micronutrient-deficient and inflamed. Conversely, micronutrient-rich foods still need to fit your energy needs. Quality-focused approaches emphasise micronutrient density per calorie — getting the most nutrients for the energy cost." },
+            { type: "check", qtype: "truefalse", q: "Micronutrients provide energy (calories) like macronutrients do.", correct: false, explain: "Micronutrients (vitamins, minerals) do NOT provide calories/energy. They're essential for enzyme function and cellular processes, but don't yield energy themselves." },
+            { type: "callout", text: "Key insight: **Macros = quantity and energy; micros = quality and function.** Optimal nutrition requires both." },
+          ],
+          quiz: [
+            { q: "Which macronutrient provides 9 kcal/g?", options: ["Carbohydrates", "Protein", "Fat", "Water"], correct: 2 },
+            { q: "Which vitamins are fat-soluble?", options: ["B and C", "A, D, E, K", "All vitamins", "None"], correct: 1 },
+            { q: "What are micronutrients?", options: ["Carbs and fats", "Vitamins and minerals", "Protein and water", "Fibre and starch"], correct: 1 },
+            { type: "multi", q: "Which are macronutrients?", options: ["Carbohydrates", "Vitamin C", "Protein", "Iron"], correct: [0, 2], explain: "Carbohydrates and protein are macronutrients. Vitamin C and iron are micronutrients." },
+          ],
+        },
+        {
+          id: "1.2",
+          title: "Calories — What They Are and What They Leave Out",
+          blocks: [
+            { type: "p", text: "A **calorie** is a unit of energy — the amount needed to raise 1 gram of water by 1°C. In nutrition, we use kilocalories (kcal). But calories tell you only ONE thing: energy content. They tell you nothing about nutrient density, hormonal effects, or food quality." },
+            { type: "term", term: "Calorie (kcal)", definition: "A unit of energy. In nutrition, 1 kcal = energy to raise 1 kg of water by 1°C." },
+            { type: "h", text: "The thermic effect of food" },
+            { type: "p", text: "Not all calories are metabolised equally. Your body uses energy to digest, absorb, and process food — this is the **thermic effect of food (TEF)**:" },
+            { type: "list", items: [
+              "**Protein**: 20–30% of calories burned in digestion (highest TEF).",
+              "**Carbohydrates**: 5–10% TEF.",
+              "**Fats**: 0–3% TEF (lowest).",
+              "This means 100 calories of protein yields fewer NET calories than 100 calories of fat.",
+            ]},
+            { type: "h", text: "What calories DON'T tell you" },
+            { type: "list", items: [
+              "**Nutrient density**: 500 kcal from vegetables vs 500 kcal from fast food — same energy, vastly different micronutrients.",
+              "**Hormonal impact**: 100 kcal from sugar spikes insulin; 100 kcal from olive oil doesn't.",
+              "**Satiety**: 300 kcal from protein/fibre keeps you full far longer than 300 kcal from refined carbs.",
+              "**Food quality**: Organic vs conventional, fresh vs processed, whole vs refined — calories don't capture this.",
+            ]},
+            { type: "h", text: "Beyond calories in, calories out" },
+            { type: "p", text: "Food quality, hormonal balance, gut health, and individual biochemistry all affect how your body USES calories. Two people can eat the same calories and have different outcomes. This is why some approaches focus less on counting and more on food quality and hormonal balance." },
+            { type: "check", q: "Which macronutrient has the highest thermic effect?", options: ["Carbohydrates", "Fat", "Protein", "All equal"], correct: 2, explain: "Protein has 20–30% TEF — your body burns 20–30% of protein calories just digesting it." },
+            { type: "callout", text: "Reality check: **Calories matter for weight, but food quality matters for health.** You can lose weight on junk food, but you won't be healthy." },
+          ],
+          quiz: [
+            { q: "What does a calorie measure?", options: ["Weight", "Energy", "Volume", "Nutrient content"], correct: 1 },
+            { q: "Which has the highest thermic effect?", options: ["Fat", "Carbs", "Protein", "Alcohol"], correct: 2 },
+            { q: "What do calories NOT tell you?", options: ["Energy content", "Nutrient density", "Weight impact", "Metabolic effect"], correct: 1 },
+            { type: "truefalse", q: "Two foods with the same calories always have the same effect on your body.", correct: false, explain: "Same calories ≠ same effect. Hormonal impact, satiety, nutrient density, and TEF all differ between foods." },
+          ],
+        },
+        {
+          id: "1.3",
+          title: "Mainstream vs Naturopathic Nutrition — Two Lenses",
+          blocks: [
+            { type: "p", text: "Nutrition isn't a monolith — there are competing paradigms. **Mainstream nutrition** is based on reductionist science, RCTs, and population-level guidelines. **Naturopathic nutrition** is holistic, emphasising whole foods, individualisation, and traditional wisdom. Both have strengths and blind spots." },
+            { type: "h", text: "Mainstream nutrition characteristics" },
+            { type: "list", items: [
+              "**Evidence-based**: Relies on RCTs, meta-analyses, systematic reviews.",
+              "**Reductionist**: Breaks food into components (macros, micros) and studies isolated nutrients.",
+              "**Population-level**: Guidelines designed for averages.",
+              "**Calorie-focused**: Energy balance is central to weight management advice.",
+              "**Supplement-friendly**: Isolated vitamins/minerals seen as equivalent to food sources.",
+            ]},
+            { type: "h", text: "Naturopathic nutrition characteristics" },
+            { type: "list", items: [
+              "**Holistic**: Views food as part of whole-person health (mind, body, environment, lifestyle).",
+              "**Whole-food focused**: Emphasises foods in their natural state; 'food synergy' (whole > sum of parts).",
+              "**Bio-individuality**: No one-size-fits-all; what works varies by person.",
+              "**Quality-focused**: Organic, regenerative, soil health, processing level matter more than macros.",
+              "**Traditional wisdom**: Incorporates ancestral diets, herbal medicine, food-as-medicine philosophy.",
+            ]},
+            { type: "h", text: "Where they agree" },
+            { type: "list", items: [
+              "Eat more vegetables and fruits.",
+              "Minimise ultra-processed foods.",
+              "Protein is essential.",
+              "Omega-3 fats are important.",
+              "Sugar-sweetened beverages are problematic.",
+            ]},
+            { type: "h", text: "Where they disagree" },
+            { type: "list", items: [
+              "**Saturated fat**: Mainstream says limit; some naturopaths say it's fine from quality sources.",
+              "**Grains**: Mainstream recommends whole grains; some naturopaths advocate grain-free/low-grain.",
+              "**Supplements**: Mainstream OKs isolated vitamins; naturopaths prefer food-based nutrients.",
+              "**Calories**: Mainstream emphasises counting; naturopaths emphasise food quality and hormonal balance.",
+            ]},
+            { type: "check", qtype: "truefalse", q: "Mainstream and naturopathic nutrition agree on everything.", correct: false, explain: "They agree on SOME things (eat vegetables, minimise processed food) but disagree on others (saturated fat, grains, supplements, calorie counting)." },
+            { type: "callout", text: "Critical thinking: **Both paradigms have blind spots.** Best approach: integrate both critically." },
+          ],
+          quiz: [
+            { q: "What does mainstream nutrition emphasise?", options: ["Bio-individuality", "Population-level guidelines", "Traditional wisdom", "Food synergy"], correct: 1 },
+            { q: "What does naturopathic nutrition emphasise?", options: ["RCTs only", "Calorie counting", "Whole foods and bio-individuality", "Isolated supplements"], correct: 2 },
+            { q: "Where do both paradigms agree?", options: ["Saturated fat is bad", "Eat more vegetables", "Grains are essential", "Calories don't matter"], correct: 1 },
+            { type: "multi", q: "Which are naturopathic nutrition principles?", options: ["Bio-individuality", "Food synergy", "Population averages", "Whole foods"], correct: [0, 1, 3], explain: "Bio-individuality, food synergy, and whole foods are naturopathic principles. Population averages are mainstream." },
+          ],
+        },
+        {
+          id: "1.4",
+          kind: "gate",
+          title: "Quick Primer: Reading Nutrition Claims Critically",
+          blocks: [
+            { type: "p", text: "Before this course gets into specific nutrients and supplements — a short, mandatory detour. Nutrition is one of the most heavily marketed topics there is, and being able to weigh a claim is more useful long-term than memorising any single fact in this course." },
+            { type: "h", text: "The hierarchy of evidence" },
+            { type: "p", text: "Not all evidence is equal. When you hear a nutrition claim, ask where it sits on this ladder — the higher up, the more you can trust it." },
+            { type: "diagram", kind: "evidencePyramid" },
+            { type: "h", text: "Three questions to ask about any nutrition claim" },
+            { type: "list", items: [
+              "**What's the evidence, specifically?** 'Studies show...' with no citation is not evidence — it's a claim about evidence.",
+              "**Who funded it, and who's selling something?** A supplement company's own study about its own product deserves more scrutiny than an independent one.",
+              "**Does it match the consensus, or is it an outlier?** One study rarely overturns a body of existing research, however exciting the headline.",
+            ]},
+            { type: "callout", text: "This isn't about dismissing anecdote or expert opinion entirely — they're useful for generating ideas worth testing. The mistake is treating them with the same confidence as a well-run trial or a review of many trials." },
+            { type: "check", qtype: "truefalse", q: "A single new study is generally strong enough evidence to overturn an existing scientific consensus.", correct: false, explain: "A lone study, however striking, sits lower on the evidence hierarchy than a systematic review or meta-analysis of many studies — real paradigm shifts usually need replication, not one headline." },
+          ],
+          quiz: [
+            { q: "Which sits highest on the hierarchy of evidence?", options: ["A testimonial", "An expert's opinion", "A single observational study", "A systematic review / meta-analysis"], correct: 3 },
+            { type: "truefalse", q: "Who funded a study is irrelevant to how much you should trust its conclusions.", correct: false, explain: "Funding source is a real, relevant factor — a study funded by a company selling the product it's testing deserves more scrutiny, not automatic dismissal." },
+            { q: "Why is 'studies show...' with no citation a weak claim on its own?", options: ["Because studies are never trustworthy", "Because it's a claim about evidence, not actual evidence you can check", "Because it's always false", "It isn't weak at all"], correct: 1 },
+          ],
+        },
+        {
+          id: "1.5",
+          title: "How Nutrition Guidelines Actually Get Made",
+          blocks: [
+            { type: "p", text: "Ever wonder who decides how much protein you 'need' or whether saturated fat is 'bad'? Nutrition guidelines come from government bodies (e.g. USDA, NHMRC) and are based on systematic reviews of evidence — but the process has political and economic influences." },
+            { type: "h", text: "The guideline-making process" },
+            { type: "list", items: [
+              "**Systematic reviews**: Expert panels review all available evidence on a topic.",
+              "**Grading evidence**: Studies are graded by quality (RCTs > observational > expert opinion).",
+              "**Draft recommendations**: Based on evidence strength, panels draft guidelines.",
+              "**Public comment**: Industry groups, researchers, and public submit feedback.",
+              "**Final guidelines**: Revised based on feedback, then published.",
+            ]},
+            { type: "h", text: "Problems with the process" },
+            { type: "list", items: [
+              "**Industry influence**: Food/agriculture lobbies submit comments and fund research. Example: Sugar industry funded research blaming fat for heart disease in 1960s–70s.",
+              "**Observational data limitations**: Many guidelines based on epidemiological studies (correlation, not causation).",
+              "**One-size-fits-all**: Guidelines for 'average' person don't account for individual variation.",
+              "**Slow to update**: Guidelines lag behind emerging science.",
+            ]},
+            { type: "h", text: "Key guidelines and their basis" },
+            { type: "list", items: [
+              "**RDA (Recommended Dietary Allowance)**: Minimum to prevent deficiency in 97.5% of population — NOT optimal for health/performance.",
+              "**AMDR (Acceptable Macronutrient Distribution Ranges)**: Suggested % of calories from carbs/protein/fat — based on population averages.",
+              "**Dietary Guidelines**: Country-specific advice — influenced by agriculture policy.",
+            ]},
+            { type: "check", q: "What does RDA stand for?", options: ["Real Daily Allowance", "Recommended Dietary Allowance", "Required Daily Amount", "Random Dietary Advice"], correct: 1, explain: "RDA = Recommended Dietary Allowance — minimum to prevent deficiency, NOT optimal intake." },
+            { type: "callout", text: "Critical insight: **Guidelines = minimums for averages, not optimals for you.** They're starting points, not gospel." },
+          ],
+          quiz: [
+            { q: "What is RDA designed to prevent?", options: ["Optimal health", "Deficiency", "Weight gain", "Disease"], correct: 1 },
+            { q: "What type of evidence is highest quality?", options: ["Expert opinion", "Observational studies", "RCTs", "Case reports"], correct: 2 },
+            { q: "Who influences nutrition guidelines?", options: ["Scientists only", "Industry lobbies too", "No one", "Only doctors"], correct: 1 },
+            { type: "truefalse", q: "RDAs represent optimal intake for health and performance.", correct: false, explain: "RDAs are MINIMUMS to prevent deficiency — not optimal intakes for health, performance, or longevity." },
+          ],
+        },
+        {
+          id: "1.6",
+          title: "Module 1 Review: Foundations",
+          blocks: [
+            { type: "p", text: "A quick cumulative check across everything in this module — macros vs micros, what calories do and don't tell you, the two nutrition lenses, reading claims critically, and how guidelines actually get made." },
+          ],
+          quiz: [
+            { q: "Which macronutrient has the highest thermic effect (burns the most calories just digesting it)?", options: ["Carbohydrates", "Fat", "Protein", "Water"], correct: 2 },
+            { type: "truefalse", q: "A single new study is generally strong enough to overturn an existing scientific consensus.", correct: false, explain: "As covered in the evidence hierarchy, a lone study sits lower than a systematic review or meta-analysis — real shifts usually need replication." },
+            { q: "Where do mainstream and naturopathic nutrition actually agree, per Lesson 1.3?", options: ["Saturated fat is always bad", "Eat more vegetables", "Grains are essential", "Calories don't matter"], correct: 1 },
+            { q: "What does the RDA for a nutrient actually represent?", options: ["Optimal intake for performance", "The minimum to prevent deficiency in most of the population", "The maximum safe intake", "The average intake worldwide"], correct: 1 },
+            { type: "multi", q: "Which of these do calories alone NOT tell you, per Lesson 1.2?", options: ["Energy content", "Nutrient density", "Hormonal impact", "Satiety"], correct: [1, 2, 3], explain: "Calories DO tell you energy content — that's the one thing they measure. They don't tell you nutrient density, hormonal impact, or satiety." },
+            { type: "type", q: "Fill in the blank: the strongest type of evidence on the hierarchy from Lesson 1.4 is a systematic review or ______-analysis.", accepted: ["meta"], explain: "A meta-analysis pools many studies together, which is why it sits at the top of the evidence hierarchy." },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m2",
+      number: 2,
+      section: "Foundations",
+      title: "Protein — The Building Block",
+      description: "What protein does, sources, requirements, and quality metrics.",
+      lessons: [
+        {
+          id: "2.1",
+          title: "What Protein Actually Does",
+          blocks: [
+            { type: "p", text: "Protein isn't just for bodybuilders — it's essential for virtually every cellular process. Your body is constantly breaking down and rebuilding proteins (turnover), so you need a steady supply from food." },
+            { type: "h", text: "Functions of protein" },
+            { type: "list", items: [
+              "**Muscle tissue**: Structural protein for movement, metabolism, and strength.",
+              "**Enzymes**: All enzymes are proteins — they catalyse every chemical reaction in your body.",
+              "**Hormones**: Many hormones are proteins or peptides (e.g. insulin, growth hormone).",
+              "**Immune function**: Antibodies are proteins that fight infections.",
+              "**Transport**: Haemoglobin (oxygen transport), lipoproteins (fat transport).",
+              "**Structural**: Collagen (skin, tendons), keratin (hair, nails).",
+              "**Energy**: Can be used for energy when carbs/fats are insufficient (4 kcal/g).",
+            ]},
+            { type: "h", text: "Amino acids — the building blocks" },
+            { type: "p", text: "Proteins are chains of **amino acids**. There are 20 standard amino acids:" },
+            { type: "list", items: [
+              "**Essential amino acids (9)**: Cannot be made by body; must come from food.",
+              "**Non-essential amino acids (11)**: Can be synthesised by body from other compounds.",
+              "**Conditionally essential**: Normally non-essential, but become essential during illness, stress, or growth.",
+            ]},
+            { type: "h", text: "Protein turnover" },
+            { type: "p", text: "Your body is in constant flux — breaking down old proteins and synthesising new ones. To maintain muscle and function, protein synthesis must equal or exceed breakdown. This is why daily protein intake matters." },
+            { type: "check", qtype: "truefalse", q: "All amino acids must come from food.", correct: false, explain: "Only 9 amino acids are ESSENTIAL (must come from food). The other 11 are non-essential — your body can make them." },
+            { type: "callout", text: "Key fact: **Protein is the only macronutrient your body can't store.** You need regular intake throughout the day." },
+          ],
+          quiz: [
+            { q: "How many essential amino acids are there?", options: ["5", "9", "11", "20"], correct: 1 },
+            { q: "What are antibodies made of?", options: ["Carbohydrates", "Fats", "Protein", "Vitamins"], correct: 2 },
+            { q: "Can your body store protein?", options: ["Yes, like fat", "Yes, like glycogen", "No, not really", "Only in muscle"], correct: 2 },
+            { type: "multi", q: "Which are functions of protein?", options: ["Enzyme catalysis", "Energy storage", "Immune function", "Hormone production"], correct: [0, 2, 3], explain: "Proteins function as enzymes, antibodies, and hormones. Energy STORAGE is primarily fat, not protein." },
+          ],
+        },
+        {
+          id: "2.2",
+          title: "Complete vs Incomplete, Animal vs Plant Sources",
+          blocks: [
+            { type: "p", text: "Not all protein sources are equal. The key distinction is whether a food contains all 9 essential amino acids in adequate amounts — this determines if it's 'complete' or 'incomplete' protein." },
+            { type: "h", text: "Complete proteins" },
+            { type: "list", items: [
+              "Contain all 9 essential amino acids in adequate proportions.",
+              "**Animal sources**: Meat, poultry, fish, eggs, dairy (all complete).",
+              "**Plant sources**: Soy, quinoa, buckwheat, hemp seeds, chia seeds (few exceptions).",
+              "Generally higher in leucine (key amino acid for muscle protein synthesis).",
+            ]},
+            { type: "h", text: "Incomplete proteins" },
+            { type: "list", items: [
+              "Missing or low in one or more essential amino acids.",
+              "**Most plant proteins**: Grains (low in lysine), legumes (low in methionine), nuts/seeds.",
+              "Can be 'complemented' by eating different sources throughout the day (e.g. rice + beans = complete profile).",
+            ]},
+            { type: "h", text: "Animal vs plant protein" },
+            { type: "list", items: [
+              "**Animal protein advantages**: Complete, higher bioavailability, more leucine, better for muscle synthesis.",
+              "**Animal protein concerns**: Saturated fat (debatable), environmental impact, ethical concerns.",
+              "**Plant protein advantages**: Fibre, phytonutrients, lower environmental impact, no cholesterol.",
+              "**Plant protein concerns**: Often incomplete, lower bioavailability, anti-nutrients (reduced by cooking/fermenting).",
+            ]},
+            { type: "h", text: "The middle ground" },
+            { type: "p", text: "You don't need to be vegan OR carnivore. Many people thrive on mixed diets. If plant-based, eat variety. Quality matters: grass-fed/pasture-raised animal products have better fatty acid profiles. Fermented/soaked plant foods reduce anti-nutrients." },
+            { type: "check", q: "Which is a complete plant protein?", options: ["Rice", "Quinoa", "Wheat", "Corn"], correct: 1, explain: "Quinoa is one of the few complete plant proteins, containing all 9 essential amino acids." },
+            { type: "callout", text: "Practical takeaway: **Variety trumps perfection.** You don't need to 'complement' proteins at every meal — just eat diverse sources throughout the day." },
+          ],
+          quiz: [
+            { q: "What defines a complete protein?", options: ["High in calories", "Contains all 9 essential amino acids", "From animals only", "Easy to digest"], correct: 1 },
+            { q: "Which is NOT a complete protein source?", options: ["Eggs", "Quinoa", "Rice", "Fish"], correct: 2 },
+            { q: "What's an advantage of plant protein?", options: ["Higher leucine", "Complete amino acids", "Fibre and phytonutrients", "Better bioavailability"], correct: 2 },
+            { type: "truefalse", q: "You must combine proteins at every meal to get complete amino acids.", correct: false, explain: "Your body pools amino acids over 24 hours — you just need variety throughout the DAY, not every meal." },
+          ],
+        },
+        {
+          id: "2.3",
+          title: "How Much Protein Do You Actually Need?",
+          blocks: [
+            { type: "p", text: "Protein requirements are debated. Official guidelines say one thing; research on athletes, older adults, and weight loss says another. The truth? It depends on your goals, age, and activity level." },
+            { type: "h", text: "Official recommendations" },
+            { type: "list", items: [
+              "**RDA**: 0.8 g/kg body weight/day for average sedentary adult — MINIMUM to prevent deficiency, NOT optimal.",
+              "These are based on nitrogen balance studies in sedentary people — don't account for activity, muscle building, or aging.",
+            ]},
+            { type: "h", text: "Research-based recommendations" },
+            { type: "list", items: [
+              "**Active individuals**: 1.2–2.0 g/kg/day.",
+              "**Muscle building**: 1.6–2.2 g/kg/day (meta-analyses show diminishing returns above this).",
+              "**Weight loss**: 1.6–2.4 g/kg/day (higher protein preserves muscle in calorie deficit, increases satiety).",
+              "**Older adults (65+)**: 1.2–2.0 g/kg/day (anabolic resistance means older adults need MORE protein).",
+            ]},
+            { type: "h", text: "Quality-focused perspective" },
+            { type: "p", text: "Some approaches argue that 'how much' matters less than 'what kind' and 'how it's prepared'. They emphasise quality over quantity: grass-fed, wild-caught, organic when possible. Bone broths, fermented foods, slow-cooked meats are easier to assimilate. Individual needs vary — some constitutions need more protein; others less." },
+            { type: "h", text: "Practical calculation" },
+            { type: "list", items: [
+              "Sedentary adult: 0.8–1.0 g/kg.",
+              "Recreational exerciser: 1.2–1.6 g/kg.",
+              "Strength athlete: 1.6–2.2 g/kg.",
+              "Weight loss: 1.6–2.4 g/kg.",
+              "Older adult: 1.2–2.0 g/kg.",
+            ]},
+            { type: "check", q: "What is the RDA for protein?", options: ["0.5 g/kg", "0.8 g/kg", "1.6 g/kg", "2.2 g/kg"], correct: 1, explain: "RDA is 0.8 g/kg — MINIMUM to prevent deficiency, not optimal for active people or muscle building." },
+            { type: "callout", text: "Reality check: **RDA = minimum, not optimal.** Most active people need 1.6–2.2 g/kg for muscle, performance, and satiety." },
+          ],
+          quiz: [
+            { q: "What is the RDA for protein?", options: ["0.5 g/kg", "0.8 g/kg", "1.5 g/kg", "2.0 g/kg"], correct: 1 },
+            { q: "What do studies suggest for muscle building?", options: ["0.8 g/kg", "1.2 g/kg", "1.6–2.2 g/kg", "3.0 g/kg"], correct: 2 },
+            { q: "Why do older adults need more protein?", options: ["They eat less", "Anabolic resistance", "They digest better", "No reason"], correct: 1 },
+            { type: "truefalse", q: "The RDA represents optimal protein intake for health and performance.", correct: false, explain: "RDA is MINIMUM to prevent deficiency — not optimal for muscle, performance, or longevity." },
+          ],
+        },
+        {
+          id: "2.4",
+          title: "Protein Quality (Leucine, Digestibility, Bioavailability)",
+          blocks: [
+            { type: "p", text: "Grams of protein don't tell the whole story. **Protein quality** — determined by amino acid profile, digestibility, and bioavailability — matters just as much as quantity." },
+            { type: "h", text: "Leucine — the key amino acid" },
+            { type: "list", items: [
+              "Leucine is the primary trigger for **muscle protein synthesis (MPS)** via the mTOR pathway.",
+              "Threshold: ~2–3 g leucine per meal needed to maximally stimulate MPS.",
+              "Animal proteins (especially whey, eggs, meat) are highest in leucine.",
+              "Plant proteins generally lower in leucine — need larger servings or blending (e.g. pea + rice).",
+            ]},
+            { type: "h", text: "Digestibility and bioavailability" },
+            { type: "list", items: [
+              "**PDCAAS** (Protein Digestibility-Corrected Amino Acid Score): Rates protein quality 0–1. Eggs, whey, soy = 1.0; beans, nuts = 0.5–0.7.",
+              "**DIAAS** (Digestible Indispensable Amino Acid Score): Newer method, more accurate. Animal proteins score highest.",
+              "Anti-nutrients (lectins, phytates, tannins) in plants reduce digestibility — reduced by cooking, soaking, fermenting.",
+            ]},
+            { type: "h", text: "Protein quality rankings" },
+            { type: "list", items: [
+              "**Highest quality**: Whey, eggs, casein, beef, chicken, fish.",
+              "**Medium quality**: Soy, quinoa, Greek yogurt.",
+              "**Lower quality**: Beans, lentils, nuts, grains.",
+            ]},
+            { type: "h", text: "Whole foods vs isolated proteins" },
+            { type: "p", text: "Some argue that protein scores overvalue isolated proteins and undervalue whole plant foods. Whole foods have co-factors (enzymes, phytonutrients) that aid absorption. Long-term, high animal protein is linked to IGF-1 elevation (cancer risk debated). Plant proteins feed beneficial gut bacteria." },
+            { type: "check", qtype: "truefalse", q: "Leucine is the most important amino acid for triggering muscle protein synthesis.", correct: true, explain: "Yes — leucine is the primary trigger for MPS via the mTOR pathway. Need ~2–3 g per meal to maximise synthesis." },
+            { type: "callout", text: "Practical tip: **Combine quality and quantity.** Aim for 20–40 g high-quality protein per meal, with 2–3 g leucine, from diverse sources." },
+          ],
+          quiz: [
+            { q: "Which amino acid triggers muscle protein synthesis?", options: ["Lysine", "Leucine", "Methionine", "Tryptophan"], correct: 1 },
+            { q: "What does PDCAAS measure?", options: ["Calories", "Protein quality", "Fat content", "Carb content"], correct: 1 },
+            { q: "Which protein source has highest quality?", options: ["Beans", "Rice", "Whey", "Nuts"], correct: 2 },
+            { type: "multi", q: "What reduces plant protein digestibility?", options: ["Lectins", "Phytates", "Vitamin C", "Tannins"], correct: [0, 1, 3], explain: "Lectins, phytates, and tannins are anti-nutrients that reduce protein digestibility. Vitamin C does not." },
+          ],
+        },
+        {
+          id: "2.5",
+          title: "Module 2 Review: Protein",
+          blocks: [
+            { type: "p", text: "Pulling together what protein actually does, complete vs incomplete sources, how much you really need, and what makes a protein source high quality." },
+          ],
+          quiz: [
+            { q: "How many amino acids are classified as essential (must come from food)?", options: ["5", "9", "11", "20"], correct: 1 },
+            { type: "truefalse", q: "Your body can store protein the way it stores fat or glycogen.", correct: false, explain: "Protein is the one macronutrient your body can't meaningfully store — it needs a steady supply throughout the day." },
+            { q: "Which of these is one of the few complete plant proteins?", options: ["Rice", "Quinoa", "Wheat", "Corn"], correct: 1 },
+            { q: "What does the 0.8 g/kg protein RDA actually represent?", options: ["Optimal intake for muscle building", "The minimum to prevent deficiency in a sedentary adult", "The requirement for athletes", "The maximum safe intake"], correct: 1 },
+            { q: "Which amino acid is the primary trigger for muscle protein synthesis?", options: ["Lysine", "Leucine", "Methionine", "Tryptophan"], correct: 1 },
+            { type: "type", q: "Fill in the blank: your body pools amino acids over roughly 24 hours, so you need variety across the ______, not necessarily at every single meal.", accepted: ["day", "whole day"], explain: "This is why 'combining' proteins at every meal isn't actually necessary — just eat varied sources across the day." },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m3",
+      number: 3,
+      section: "Foundations",
+      title: "Carbohydrates & Fats — Beyond the Fear",
+      description: "Carbs (simple/complex, GI), fats (saturated/unsaturated debate), seed oils, and fibre.",
+      lessons: [
+        {
+          id: "3.1",
+          title: "Carbs, Simple/Complex, Glycemic Index",
+          blocks: [
+            { type: "p", text: "Carbohydrates have been demonised, but they're your body's preferred fuel source — especially for high-intensity exercise and brain function. The key is understanding TYPE and CONTEXT, not just avoiding them." },
+            { type: "h", text: "Carbohydrate classifications" },
+            { type: "list", items: [
+              "**Monosaccharides**: Single sugar units (glucose, fructose, galactose).",
+              "**Disaccharides**: Two sugars bonded (sucrose, lactose, maltose).",
+              "**Oligosaccharides**: 3–10 sugars (e.g. FODMAPs — can cause bloating in sensitive people).",
+              "**Polysaccharides**: Long chains (starch, glycogen, fibre).",
+            ]},
+            { type: "h", text: "Simple vs complex carbs" },
+            { type: "list", items: [
+              "**Simple carbs**: Quick digestion, rapid blood sugar spike. Found in sugar, honey, fruit, milk.",
+              "**Complex carbs**: Slower digestion, sustained energy. Found in grains, legumes, vegetables.",
+              "Nuance: 'Complex' doesn't always mean better — white potato can spike blood sugar more than table sugar.",
+            ]},
+            { type: "h", text: "Glycemic Index (GI) and Glycemic Load (GL)" },
+            { type: "list", items: [
+              "**Glycemic Index**: Rates how quickly a food raises blood sugar (0–100 scale). Low GI (<55), medium (56–69), high (70+).",
+              "**Glycemic Load**: GI × serving size — more practical, accounts for portion.",
+              "Factors affecting GI: fibre content, fat/protein in meal, processing level, ripeness, cooking method.",
+            ]},
+            { type: "h", text: "Individualised carb approaches" },
+            { type: "p", text: "Some advocate lower-glycemic, whole-food carbs over refined options. Root vegetables over grains for many people. Fermented carbs (sourdough, fermented grains) reduce anti-nutrients. Individual tolerance varies: insulin resistant, PCOS, type 2 diabetes may do better on lower-carb diets." },
+            { type: "check", q: "What does Glycemic Index measure?", options: ["Calorie content", "How quickly food raises blood sugar", "Fibre content", "Fat content"], correct: 1, explain: "GI rates how quickly a carbohydrate-containing food raises blood glucose levels." },
+            { type: "callout", text: "Key insight: **Not all carbs are equal.** Whole, fibre-rich carbs behave very differently from refined carbs in your body." },
+          ],
+          quiz: [
+            { q: "What is glucose?", options: ["Disaccharide", "Monosaccharide", "Polysaccharide", "Protein"], correct: 1 },
+            { q: "What does GI stand for?", options: ["General Intake", "Glycemic Index", "Glucose Indicator", "Gastrointestinal"], correct: 1 },
+            { q: "Which carb type digests fastest?", options: ["Polysaccharides", "Disaccharides", "Fibre", "Starch"], correct: 1 },
+            { type: "truefalse", q: "All complex carbohydrates have a lower glycemic index than simple carbohydrates.", correct: false, explain: "Not always — white potato (complex) can spike blood sugar MORE than table sugar (simple)." },
+          ],
+        },
+        {
+          id: "3.2",
+          title: "Fats and the Saturated/Unsaturated Debate",
+          blocks: [
+            { type: "p", text: "Dietary fat has been through decades of controversy. In the 1960s–90s, saturated fat was public enemy #1. Recent research has complicated that picture. The truth is nuanced." },
+            { type: "h", text: "Fat types" },
+            { type: "list", items: [
+              "**Saturated fats**: No double bonds; solid at room temperature. Sources: butter, coconut oil, animal fat.",
+              "**Monounsaturated fats (MUFA)**: One double bond; liquid at room temp. Sources: olive oil, avocado, nuts.",
+              "**Polyunsaturated fats (PUFA)**: Multiple double bonds; liquid even when chilled. Sources: fish oil, flaxseed, seed oils.",
+              "**Trans fats**: Artificial (partially hydrogenated oils) — unequivocally harmful. Natural trans fats (grass-fed dairy) may be neutral.",
+            ]},
+            { type: "h", text: "The saturated fat controversy" },
+            { type: "list", items: [
+              "**Mainstream view (1960s–2010s)**: Saturated fat raises LDL → causes heart disease. Recommend <10% calories.",
+              "**Recent research (2010s–present)**: Meta-analyses find weak or no association. Context matters (what you REPLACE it with, overall diet quality).",
+              "**Quality-focused view**: Saturated fats from grass-fed/pasture-raised sources are fine; processed meats and refined carbs + saturated fat are problematic.",
+            ]},
+            { type: "h", text: "Omega-3 vs Omega-6 balance" },
+            { type: "list", items: [
+              "**Omega-3**: Anti-inflammatory. Sources: fatty fish, flaxseed, chia, walnuts.",
+              "**Omega-6**: Pro-inflammatory in excess. Sources: seed oils, processed foods.",
+              "**Ideal ratio**: ~1:1 to 1:4. **Modern Western diet**: ~1:15 to 1:20 — chronically inflamed.",
+              "Solution: Reduce seed oils/processed foods; increase fatty fish, flax, chia, walnuts.",
+            ]},
+            { type: "h", text: "Practical fat recommendations" },
+            { type: "list", items: [
+              "Prioritise: olive oil, avocado, fatty fish, nuts, seeds, grass-fed butter/ghee.",
+              "Moderate: coconut oil, pasture-raised animal fats.",
+              "Minimise: seed oils (soybean, corn, canola, sunflower), processed foods containing them.",
+              "Avoid: trans fats (partially hydrogenated oils).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "All saturated fat causes heart disease.", correct: false, explain: "Recent meta-analyses show weak or no direct link. Context (overall diet, what it replaces, food quality) matters more." },
+            { type: "callout", text: "Reality check: **Fat quality > fat quantity.** 30% calories from olive oil, fish, and nuts is very different from 30% from seed oils and processed foods." },
+          ],
+          quiz: [
+            { q: "Which fat is solid at room temperature?", options: ["Monounsaturated", "Polyunsaturated", "Saturated", "Omega-3"], correct: 2 },
+            { q: "What is the ideal omega-3:omega-6 ratio?", options: ["1:1 to 1:4", "1:10", "1:20", "1:50"], correct: 0 },
+            { q: "Which oil should you minimise?", options: ["Olive oil", "Avocado oil", "Soybean oil", "Coconut oil"], correct: 2 },
+            { type: "multi", q: "Which are polyunsaturated fats?", options: ["Fish oil", "Olive oil", "Flaxseed", "Butter"], correct: [0, 2], explain: "Fish oil and flaxseed are high in polyunsaturated fats. Olive oil is monounsaturated; butter is saturated." },
+          ],
+        },
+        {
+          id: "3.3",
+          title: "Seed Oils — What the Controversy Actually Is",
+          blocks: [
+            { type: "p", text: "Seed oils (soybean, corn, canola, sunflower, safflower, cottonseed, grapeseed) are among the most controversial foods in nutrition. Critics call them 'toxic'; defenders say they're heart-healthy." },
+            { type: "h", text: "What are seed oils?" },
+            { type: "list", items: [
+              "Extracted from seeds using industrial processes: high heat, chemical solvents (hexane), bleaching, deodorising.",
+              "Very high in omega-6 polyunsaturated fats (linoleic acid): soybean (~50%), corn (~50%), sunflower (~65%).",
+              "Became widespread in 1900s due to cheap production and marketing as 'heart-healthy'.",
+            ]},
+            { type: "h", text: "Arguments against seed oils" },
+            { type: "list", items: [
+              "**High omega-6**: Promotes inflammation when ratio is imbalanced.",
+              "**Oxidation**: PUFAs are unstable, oxidise easily when heated or in body.",
+              "**Processing**: Chemical solvents, high heat create trans fats and oxidation products.",
+              "**Animal studies**: High seed oil intake linked to fatty liver, obesity, inflammation.",
+            ]},
+            { type: "h", text: "Arguments for seed oils" },
+            { type: "list", items: [
+              "**RCTs**: Some trials show replacing saturated fat with seed oils lowers LDL.",
+              "**Mainstream guidelines**: AHA, dietary guidelines still recommend seed oils over saturated fats.",
+              "**Affordability**: Cheap and accessible.",
+            ]},
+            { type: "h", text: "The middle ground" },
+            { type: "p", text: "Evidence suggests: small amounts occasionally are probably fine. High daily intake is likely problematic. Heating seed oils definitely creates harmful oxidation products — avoid. Better alternatives: olive oil, avocado oil, coconut oil, grass-fed butter/ghee for cooking." },
+            { type: "check", q: "What fatty acid are seed oils highest in?", options: ["Omega-3", "Omega-6", "Saturated fat", "Monounsaturated fat"], correct: 1, explain: "Seed oils are very high in omega-6 linoleic acid (50–65% of their fat content)." },
+            { type: "callout", text: "Practical advice: **Don't make seed oils your primary fat.** Use olive oil, avocado oil, or animal fats for cooking." },
+          ],
+          quiz: [
+            { q: "What are seed oils extracted using?", options: ["Cold pressing only", "Heat and chemical solvents", "Fermentation", "Sun drying"], correct: 1 },
+            { q: "Which fatty acid dominates seed oils?", options: ["Omega-3", "Omega-6", "Saturated", "Trans fat"], correct: 1 },
+            { q: "What happens when seed oils are heated?", options: ["They become healthier", "They oxidise and form harmful compounds", "Nothing", "They become saturated"], correct: 1 },
+            { type: "truefalse", q: "Seed oils are recommended by mainstream guidelines over saturated fats.", correct: true, explain: "Yes — AHA and dietary guidelines still recommend replacing saturated fats with seed oils, though this is debated." },
+          ],
+        },
+        {
+          id: "3.4",
+          title: "Fibre, the Most Underrated Nutrient",
+          blocks: [
+            { type: "p", text: "Fibre gets less attention than protein and carbs, but it's crucial for gut health, blood sugar control, satiety, and disease prevention. Most people get far less than the recommended 25–40 g/day." },
+            { type: "h", text: "Types of fibre" },
+            { type: "list", items: [
+              "**Soluble fibre**: Dissolves in water, forms gel. Slows digestion, stabilises blood sugar, feeds gut bacteria.",
+              "**Insoluble fibre**: Doesn't dissolve; adds bulk to stool, speeds transit.",
+              "**Resistant starch**: Acts like fibre — resists digestion, feeds gut bacteria. Sources: cooled potatoes/rice, green bananas.",
+              "**Prebiotic fibre**: Specifically feeds beneficial gut bacteria. Sources: onions, garlic, asparagus, Jerusalem artichokes.",
+            ]},
+            { type: "h", text: "Benefits of fibre" },
+            { type: "list", items: [
+              "**Gut health**: Feeds beneficial bacteria → produces short-chain fatty acids (butyrate) → reduces inflammation.",
+              "**Blood sugar**: Slows glucose absorption → prevents spikes/crashes.",
+              "**Satiety**: Bulks up meals → keeps you fuller longer.",
+              "**Cholesterol**: Soluble fibre binds cholesterol → excreted → lowers blood cholesterol.",
+              "**Disease prevention**: High fibre linked to lower risk of heart disease, type 2 diabetes, colorectal cancer.",
+            ]},
+            { type: "h", text: "Fibre and gut bacteria" },
+            { type: "p", text: "Your gut microbiome ferments fibre into **short-chain fatty acids (SCFAs)**, especially butyrate. Butyrate feeds colon cells, reduces gut inflammation, strengthens gut barrier, and may protect against colorectal cancer." },
+            { type: "h", text: "Whole foods vs supplements" },
+            { type: "p", text: "Emphasis on diverse fibres from whole plant foods over supplements — food matrix matters. Soaked/fermented grains/legumes reduce anti-nutrients and improve tolerance. Some people (IBS, SIBO) may need to temporarily reduce certain fibres (FODMAPs) before reintroducing." },
+            { type: "check", qtype: "truefalse", q: "Soluble fibre dissolves in water and forms a gel.", correct: true, explain: "Yes — soluble fibre dissolves in water, forming a gel that slows digestion and feeds gut bacteria." },
+            { type: "callout", text: "Practical target: **Aim for 25–40 g fibre/day from diverse sources.** Increase gradually to avoid bloating." },
+          ],
+          quiz: [
+            { q: "Which fibre dissolves in water?", options: ["Insoluble", "Soluble", "Both", "Neither"], correct: 1 },
+            { q: "What do gut bacteria produce from fibre?", options: ["Glucose", "Short-chain fatty acids", "Protein", "Cholesterol"], correct: 1 },
+            { q: "Which food is high in prebiotic fibre?", options: ["White rice", "Garlic", "Chicken", "Butter"], correct: 1 },
+            { type: "multi", q: "What are benefits of fibre?", options: ["Gut health", "Blood sugar control", "Increased inflammation", "Satiety"], correct: [0, 1, 3], explain: "Fibre improves gut health, blood sugar control, and satiety. It REDUCES inflammation." },
+          ],
+        },
+        {
+          id: "3.5",
+          title: "Module 3 Review: Carbohydrates & Fats",
+          blocks: [
+            { type: "p", text: "A cumulative check on glycemic index and load, the saturated/unsaturated fat debate, seed oils, and fibre." },
+          ],
+          quiz: [
+            { q: "What does Glycemic Load account for that Glycemic Index alone does not?", options: ["Fibre content", "Serving size", "Fat content", "Cooking method"], correct: 1 },
+            { type: "truefalse", q: "Being a 'complex' carbohydrate always means a lower glycemic index than a 'simple' one.", correct: false, explain: "Not always — white potato (complex) can spike blood sugar more than table sugar (simple)." },
+            { q: "Which ratio is closest to the ideal omega-3 to omega-6 balance covered in Lesson 3.2?", options: ["1:1 to 1:4", "1:20", "1:50", "1:100"], correct: 0 },
+            { q: "What happens to seed oils when they're heated?", options: ["They become healthier", "They oxidise and form harmful compounds", "They turn into saturated fat", "Nothing changes"], correct: 1 },
+            { q: "Which type of fibre dissolves in water and forms a gel?", options: ["Insoluble", "Soluble", "Resistant starch only", "None of these"], correct: 1 },
+            { type: "multi", q: "Which are genuine benefits of dietary fibre, per Lesson 3.4?", options: ["Gut health", "Blood sugar control", "Increased inflammation", "Satiety"], correct: [0, 1, 3], explain: "Fibre reduces inflammation via SCFAs like butyrate — it doesn't increase it." },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m4",
+      number: 4,
+      section: "Foundations",
+      title: "Micronutrients & Deficiency",
+      description: "Vitamins (fat/water-soluble), common mineral deficiencies, signs, and food vs supplements.",
+      lessons: [
+        {
+          id: "4.1",
+          title: "Vitamins (Fat- vs Water-Soluble)",
+          blocks: [
+            { type: "p", text: "Vitamins are essential organic compounds your body needs in small amounts. They're divided into two categories based on how they're absorbed and stored — and this has major implications for supplementation and toxicity." },
+            { type: "h", text: "Fat-soluble vitamins" },
+            { type: "list", items: [
+              "**Vitamins A, D, E, K**: Dissolve in fat, stored in body fat and liver.",
+              "**Don't need daily intake**: Body stores can last weeks/months.",
+              "**Toxicity risk**: Can accumulate to toxic levels if over-supplemented.",
+              "**Best absorbed with dietary fat**: Take with meals containing fat.",
+            ]},
+            { type: "h", text: "Water-soluble vitamins" },
+            { type: "list", items: [
+              "**B-complex and C**: Dissolve in water, not stored well (except B12 in liver).",
+              "**Need regular intake**: Excess excreted in urine; can deplete quickly.",
+              "**Toxicity rare**: Hard to overdose from food; high-dose supplements can still cause issues.",
+            ]},
+            { type: "h", text: "Key vitamins and functions" },
+            { type: "list", items: [
+              "**Vitamin A**: Vision, immune function, skin health.",
+              "**Vitamin D**: Bone health, immune function, mood.",
+              "**Vitamin E**: Antioxidant, protects cell membranes.",
+              "**Vitamin K**: Blood clotting, bone health.",
+              "**B vitamins**: Energy metabolism, nervous system, red blood cell formation.",
+              "**Vitamin C**: Collagen synthesis, immune function, antioxidant.",
+            ]},
+            { type: "h", text: "Food-based approach" },
+            { type: "p", text: "Vitamins in whole foods come with co-factors (enzymes, phytonutrients) that aid absorption and function. Isolated vitamins may not work the same. Supplements have their place (deficiencies, specific conditions), but food first." },
+            { type: "check", q: "Which vitamins are fat-soluble?", options: ["B and C", "A, D, E, K", "All vitamins", "None"], correct: 1, explain: "Vitamins A, D, E, and K are fat-soluble — stored in body fat and liver." },
+            { type: "callout", text: "Key insight: **Fat-soluble = stored, potential toxicity; Water-soluble = need regular intake, low toxicity.**" },
+          ],
+          quiz: [
+            { q: "Which vitamins are water-soluble?", options: ["A, D, E, K", "B-complex and C", "All vitamins", "None"], correct: 1 },
+            { q: "Which vitamin can you synthesise from sunlight?", options: ["Vitamin A", "Vitamin C", "Vitamin D", "Vitamin E"], correct: 2 },
+            { q: "Which vitamins can accumulate to toxic levels?", options: ["Water-soluble", "Fat-soluble", "Both", "Neither"], correct: 1 },
+            { type: "truefalse", q: "You need to consume water-soluble vitamins daily.", correct: true, explain: "Water-soluble vitamins aren't stored well — excess is excreted in urine, so you need regular intake." },
+          ],
+        },
+        {
+          id: "4.2",
+          title: "Minerals People Most Commonly Fall Short On",
+          blocks: [
+            { type: "p", text: "Minerals are inorganic elements essential for countless bodily functions. Unlike vitamins, they can't be synthesised — you MUST get them from food or supplements. Several are commonly deficient." },
+            { type: "h", text: "Magnesium" },
+            { type: "list", items: [
+              "**Functions**: 300+ enzyme reactions, muscle/nerve function, blood sugar control, sleep.",
+              "**Deficiency signs**: Muscle cramps, anxiety, insomnia, irregular heartbeat, migraines.",
+              "**Why deficient**: Soil depletion, processed foods, stress depletes magnesium, certain medications.",
+              "**Food sources**: Leafy greens, nuts, seeds, legumes, dark chocolate, whole grains.",
+            ]},
+            { type: "h", text: "Zinc" },
+            { type: "list", items: [
+              "**Functions**: Immune function, wound healing, DNA synthesis, taste/smell, testosterone.",
+              "**Deficiency signs**: Frequent infections, slow wound healing, hair loss, reduced taste/smell.",
+              "**Why deficient**: Plant-based diets (phytates block absorption), alcoholism, GI disorders.",
+              "**Food sources**: Oysters (highest), red meat, poultry, pumpkin seeds, cashews.",
+            ]},
+            { type: "h", text: "Iron" },
+            { type: "list", items: [
+              "**Functions**: Oxygen transport (haemoglobin), energy production, immune function.",
+              "**Deficiency signs**: Fatigue, weakness, pale skin, shortness of breath, cold hands/feet.",
+              "**Why deficient**: Menstruation, pregnancy, low meat intake, GI blood loss, poor absorption.",
+              "**Food sources**: Red meat, liver (heme iron — best absorbed); spinach, legumes (non-heme — less absorbed).",
+            ]},
+            { type: "h", text: "Other commonly low minerals" },
+            { type: "list", items: [
+              "**Calcium**: Bone health, muscle function.",
+              "**Potassium**: Blood pressure, nerve function.",
+              "**Iodine**: Thyroid hormone production.",
+              "**Selenium**: Antioxidant, thyroid function.",
+            ]},
+            { type: "check", q: "Which mineral is crucial for 300+ enzyme reactions?", options: ["Iron", "Zinc", "Magnesium", "Calcium"], correct: 2, explain: "Magnesium is involved in over 300 enzymatic reactions in the body." },
+            { type: "callout", text: "Critical note: **Get tested before supplementing iron.** Excess iron is dangerous." },
+          ],
+          quiz: [
+            { q: "Which mineral deficiency causes muscle cramps?", options: ["Iron", "Zinc", "Magnesium", "Iodine"], correct: 2 },
+            { q: "Which food is highest in zinc?", options: ["Spinach", "Oysters", "Bananas", "Rice"], correct: 1 },
+            { q: "What does iron primarily do?", options: ["Builds muscle", "Transports oxygen", "Regulates blood sugar", "Produces hormones"], correct: 1 },
+            { type: "multi", q: "Which are common deficiency signs of magnesium?", options: ["Muscle cramps", "Insomnia", "Hair loss", "Anxiety"], correct: [0, 1, 3], explain: "Magnesium deficiency causes muscle cramps, insomnia, and anxiety. Hair loss is more associated with zinc or iron." },
+          ],
+        },
+        {
+          id: "4.3",
+          title: "Common Deficiencies and Their Signs",
+          blocks: [
+            { type: "p", text: "Micronutrient deficiencies are more common than you'd think — even in developed countries. Some are outright deficiencies; others are 'subclinical' (not severe enough for disease, but impairing function)." },
+            { type: "h", text: "Vitamin D deficiency" },
+            { type: "list", items: [
+              "**Prevalence**: ~1 billion people worldwide; very common in winter, northern latitudes, darker skin.",
+              "**Signs**: Fatigue, frequent infections, bone pain, depression, slow wound healing.",
+              "**Testing**: 25(OH)D blood test; optimal range 40–60 ng/mL.",
+              "**Solution**: Sunlight, fatty fish, supplementation (1000–5000 IU/day D3 + K2).",
+            ]},
+            { type: "h", text: "B12 deficiency" },
+            { type: "list", items: [
+              "**Prevalence**: Common in vegans/vegetarians, older adults, people on PPIs/metformin.",
+              "**Signs**: Fatigue, brain fog, memory issues, tingling/numbness, anaemia.",
+              "**Testing**: Serum B12 (can be misleading); MMA and homocysteine more accurate.",
+              "**Solution**: Animal products; supplementation (methylcobalamin 500–1000 mcg/day for vegans).",
+            ]},
+            { type: "h", text: "Iron deficiency" },
+            { type: "list", items: [
+              "**Prevalence**: Most common nutrient deficiency worldwide; especially women.",
+              "**Signs**: Fatigue, weakness, pale skin, shortness of breath, restless legs.",
+              "**Testing**: Ferritin (iron stores; optimal >50 ng/mL), serum iron, transferrin saturation.",
+              "**Solution**: Red meat, liver; spinach, legumes (pair with vitamin C); supplementation if deficient.",
+            ]},
+            { type: "h", text: "Magnesium deficiency" },
+            { type: "list", items: [
+              "**Prevalence**: ~50% of Western populations don't meet RDA.",
+              "**Signs**: Muscle cramps/twitches, anxiety, insomnia, migraines, irregular heartbeat.",
+              "**Testing**: RBC magnesium (more accurate than serum).",
+              "**Solution**: Leafy greens, nuts, seeds, dark chocolate; supplementation (glycinate/citrate 200–400 mg/day).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "Serum B12 is the most accurate test for B12 status.", correct: false, explain: "Serum B12 can be misleading. MMA and homocysteine are more accurate functional markers." },
+            { type: "callout", text: "Critical advice: **Get tested before supplementing**, especially for iron and vitamin D." },
+          ],
+          quiz: [
+            { q: "Which deficiency causes fatigue and frequent infections?", options: ["Vitamin C", "Vitamin D", "Vitamin K", "Biotin"], correct: 1 },
+            { q: "Who is at highest risk for B12 deficiency?", options: ["Meat eaters", "Vegans", "Children", "Athletes"], correct: 1 },
+            { q: "What test best measures iron stores?", options: ["Serum iron", "Ferritin", "Haemoglobin", "White blood cells"], correct: 1 },
+            { type: "truefalse", q: "About 50% of Western populations don't meet the RDA for magnesium.", correct: true, explain: "Yes — approximately half of people in Western countries don't get enough magnesium from diet." },
+          ],
+        },
+        {
+          id: "4.4",
+          title: "Food Sources vs Supplementation",
+          blocks: [
+            { type: "p", text: "Should you get nutrients from food or supplements? The answer isn't either/or — it's both, strategically. Food first, supplements to fill gaps or address specific needs." },
+            { type: "h", text: "Why food is superior" },
+            { type: "list", items: [
+              "**Food matrix**: Nutrients in whole foods come with co-factors (enzymes, phytonutrients, fibre) that aid absorption.",
+              "**Synergy**: Nutrients work together (e.g. vitamin C enhances iron absorption; vitamin D needs K2 and magnesium).",
+              "**Safety**: Hard to overdose from food; supplements can easily exceed safe limits.",
+              "**Bioavailability**: Food-form nutrients often better absorbed.",
+            ]},
+            { type: "h", text: "When supplements make sense" },
+            { type: "list", items: [
+              "**Deficiencies**: Correcting diagnosed deficiencies (e.g. vitamin D, iron, B12).",
+              "**Life stages**: Pregnancy (folate, iron), older adults (B12, D), limited sun exposure (D).",
+              "**Dietary restrictions**: Vegans (B12, iron, zinc, omega-3), allergies/intolerances.",
+              "**Therapeutic doses**: Addressing specific conditions (e.g. high-dose D for immune support).",
+            ]},
+            { type: "h", text: "Strategic supplementation" },
+            { type: "list", items: [
+              "**Vitamin D**: 1000–5000 IU/day D3 + K2, especially winter/northern latitudes.",
+              "**Magnesium**: 200–400 mg glycinate/citrate before bed.",
+              "**Omega-3**: 1–3 g EPA+DHA/day if not eating fatty fish 2–3x/week.",
+              "**B12**: 500–1000 mcg methylcobalamin/day for vegans/vegetarians.",
+              "**Zinc**: 15–30 mg/day short-term for immune support.",
+            ]},
+            { type: "h", text: "Whole-food supplements" },
+            { type: "p", text: "Some prefer whole-food supplements (e.g. desiccated liver, food-based multivitamins) over isolates. Address root causes of deficiency (gut health, stress, medications) — not just replacing nutrients." },
+            { type: "check", q: "Which nutrient pair works synergistically?", options: ["Calcium and iron", "Vitamin D and K2", "Zinc and copper", "Magnesium and sodium"], correct: 1, explain: "Vitamin D and K2 work together — D increases calcium absorption; K2 directs calcium to bones, not arteries." },
+            { type: "callout", text: "Golden rule: **Supplements supplement a good diet — they don't replace it.** Food first, targeted supplements second." },
+          ],
+          quiz: [
+            { q: "What enhances iron absorption?", options: ["Calcium", "Vitamin C", "Vitamin D", "Fibre"], correct: 1 },
+            { q: "Which form of B12 is best absorbed?", options: ["Cyanocobalamin", "Methylcobalamin", "Hydroxocobalamin", "Adenosylcobalamin"], correct: 1 },
+            { q: "What should you take with vitamin D?", options: ["Calcium only", "K2 and magnesium", "Iron", "Zinc"], correct: 1 },
+            { type: "truefalse", q: "Whole-food supplements are generally preferred over isolated nutrients.", correct: true, explain: "Whole-food supplements with co-factors are often preferred over isolated synthetic nutrients." },
+          ],
+        },
+        {
+          id: "4.5",
+          title: "Module 4 Review: Micronutrients & Deficiency",
+          blocks: [
+            { type: "p", text: "Reviewing fat- vs water-soluble vitamins, the minerals people most commonly fall short on, how deficiencies are actually tested, and when supplements make sense." },
+          ],
+          quiz: [
+            { q: "Which vitamins are fat-soluble and can accumulate to toxic levels if over-supplemented?", options: ["B and C", "A, D, E, K", "All vitamins", "None"], correct: 1 },
+            { q: "Which mineral is involved in 300+ enzyme reactions and is deficient in roughly half of Western populations?", options: ["Iron", "Zinc", "Magnesium", "Calcium"], correct: 2 },
+            { q: "Which test best measures actual iron STORES, rather than just current blood iron?", options: ["Serum iron", "Ferritin", "Haemoglobin", "White blood cell count"], correct: 1 },
+            { type: "truefalse", q: "Serum B12 is the most reliable marker of true B12 status.", correct: false, explain: "Serum B12 can be misleading — MMA and homocysteine are more accurate functional markers." },
+            { q: "Which nutrient pair works synergistically, per Lesson 4.4?", options: ["Calcium and iron", "Vitamin D and K2", "Zinc and copper", "Magnesium and sodium"], correct: 1 },
+            { type: "type", q: "Fill in the blank: unlike vitamins, minerals cannot be made by the body and must always come from food or ______.", accepted: ["supplements", "supplementation"], explain: "Minerals are inorganic elements the body can't synthesise — food or supplements are the only sources." },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m5",
+      number: 5,
+      section: "Foundations",
+      title: "Hydration & Everyday Physiology",
+      description: "How much water you need, electrolytes, and signs of under-hydration people miss.",
+      lessons: [
+        {
+          id: "5.1",
+          title: "How Much Water You Actually Need",
+          blocks: [
+            { type: "p", text: "'Drink 8 glasses a day' is arbitrary. Hydration needs vary based on body size, activity, climate, diet, and health status." },
+            { type: "h", text: "Official recommendations" },
+            { type: "list", items: [
+              "**Institute of Medicine (US)**: 3.7 L/day men, 2.7 L/day women (TOTAL water — includes food moisture).",
+              "**EFSA (Europe)**: 2.5 L/day men, 2.0 L/day women.",
+              "These are population averages — individual needs vary 2–3x.",
+            ]},
+            { type: "h", text: "Factors affecting water needs" },
+            { type: "list", items: [
+              "**Body size**: Larger people need more water (rough guide: 30–35 mL/kg body weight).",
+              "**Activity**: Exercise increases needs (add 500–1000 mL per hour of intense exercise).",
+              "**Climate**: Hot/humid environments increase sweat loss; high altitude increases respiratory water loss.",
+              "**Diet**: High protein/salt increases water needs; high fruit/vegetable intake provides water.",
+              "**Health status**: Fever, vomiting, diarrhoea increase needs; kidney/heart disease may require restriction.",
+            ]},
+            { type: "h", text: "Better than '8 glasses'" },
+            { type: "list", items: [
+              "**Urine colour**: Pale yellow = well-hydrated; dark yellow/amber = dehydrated.",
+              "**Thirst**: Drink when thirsty — but don't wait until you're parched.",
+              "**Frequency**: Urinating every 2–4 hours is normal; less often suggests under-hydration.",
+              "**Body weight**: Weigh before/after exercise; each kg lost = 1 L fluid to replace.",
+            ]},
+            { type: "h", text: "Practical hydration tips" },
+            { type: "p", text: "Warm/hot water is easier to digest than ice-cold. Herbal teas count toward hydration (non-caffeinated). Water-rich foods (cucumber, watermelon, citrus) contribute significantly. Sip throughout day; don't chug large volumes at once." },
+            { type: "check", qtype: "truefalse", q: "Everyone needs exactly 8 glasses of water per day.", correct: false, explain: "No — needs vary 2–3x based on body size, activity, climate, diet, and health." },
+            { type: "callout", text: "Practical guide: **Aim for pale yellow urine, drink when thirsty.** Rough starting point: 2–3 L/day for most adults." },
+          ],
+          quiz: [
+            { q: "What colour should well-hydrated urine be?", options: ["Clear", "Pale yellow", "Dark yellow", "Brown"], correct: 1 },
+            { q: "How much water does exercise add to your needs?", options: ["None", "100 mL", "500–1000 mL per hour", "5 L per hour"], correct: 2 },
+            { q: "Do water-rich foods count toward hydration?", options: ["No", "Yes, significantly", "Only fruits", "Only vegetables"], correct: 1 },
+            { type: "multi", q: "Which factors increase water needs?", options: ["Exercise", "Hot climate", "High protein diet", "Sedentary lifestyle"], correct: [0, 1, 2], explain: "Exercise, hot climate, and high protein diets all increase water needs." },
+          ],
+        },
+        {
+          id: "5.2",
+          title: "Electrolytes, and When Plain Water Isn't Enough",
+          blocks: [
+            { type: "p", text: "Water alone isn't always enough — especially during/after intense exercise, heat exposure, or illness. **Electrolytes** (minerals that carry electrical charge) are crucial for fluid balance, nerve function, and muscle contraction." },
+            { type: "h", text: "Key electrolytes" },
+            { type: "list", items: [
+              "**Sodium (Na+)**: Primary extracellular cation; regulates fluid balance, nerve transmission, muscle contraction.",
+              "**Potassium (K+)**: Primary intracellular cation; heart function, muscle contraction, blood pressure.",
+              "**Magnesium (Mg2+)**: 300+ enzyme reactions, muscle relaxation, energy production.",
+              "**Calcium (Ca2+)**: Bone health, muscle contraction, nerve signalling.",
+              "**Chloride (Cl-)**: Fluid balance, stomach acid (HCl).",
+            ]},
+            { type: "h", text: "When you need electrolytes" },
+            { type: "list", items: [
+              "**Intense exercise >60–90 min**: Sweat loses sodium, potassium, magnesium.",
+              "**Heat exposure/sauna**: Heavy sweating depletes electrolytes.",
+              "**Illness**: Vomiting, diarrhoea, fever cause rapid electrolyte loss.",
+              "**Low-carb/keto diets**: Insulin drop causes kidneys to excrete more sodium → 'keto flu'.",
+              "**Chronic stress**: Aldosterone dysregulation affects sodium retention.",
+            ]},
+            { type: "h", text: "Signs of electrolyte imbalance" },
+            { type: "list", items: [
+              "**Low sodium**: Headache, nausea, confusion, seizures (severe).",
+              "**Low potassium**: Muscle weakness, cramps, irregular heartbeat, fatigue.",
+              "**Low magnesium**: Muscle cramps/twitches, anxiety, insomnia, irregular heartbeat.",
+              "**General**: Fatigue, dizziness, brain fog, muscle cramps, irregular heartbeat.",
+            ]},
+            { type: "h", text: "Electrolyte sources" },
+            { type: "list", items: [
+              "**Food**: Bananas, potatoes, spinach (potassium); nuts, seeds, leafy greens (magnesium); salt (sodium).",
+              "**Electrolyte powders/tablets**: Look for 300–500 mg sodium, 100–200 mg potassium, 50–100 mg magnesium per serving.",
+              "**DIY electrolyte drink**: 500 mL water + 1/4 tsp salt + juice of 1/2 lemon + 1 tbsp honey/maple syrup.",
+            ]},
+            { type: "check", q: "Which electrolyte is primarily lost in sweat?", options: ["Calcium", "Sodium", "Iron", "Zinc"], correct: 1, explain: "Sodium is the primary electrolyte lost in sweat — critical to replace during/after prolonged exercise or heat exposure." },
+            { type: "callout", text: "Critical warning: **Hyponatraemia** (low blood sodium from drinking too much plain water) can be life-threatening. Use electrolytes, not just water." },
+          ],
+          quiz: [
+            { q: "Which is the primary extracellular electrolyte?", options: ["Potassium", "Sodium", "Magnesium", "Calcium"], correct: 1 },
+            { q: "What causes hyponatraemia?", options: ["Too much sodium", "Too much plain water", "Too little water", "Too much potassium"], correct: 1 },
+            { q: "Which food is highest in potassium?", options: ["White rice", "Bananas", "Chicken", "Butter"], correct: 1 },
+            { type: "truefalse", q: "Sports drinks are the best source of electrolytes.", correct: false, explain: "Most sports drinks have too much sugar and not enough electrolytes. Electrolyte powders or DIY drinks are better." },
+          ],
+        },
+        {
+          id: "5.3",
+          title: "Signs of Under-Hydration People Miss",
+          blocks: [
+            { type: "p", text: "Obvious dehydration signs (thirst, dark urine, dry mouth) are well-known. But chronic mild under-hydration causes subtler symptoms people often miss." },
+            { type: "h", text: "Common missed signs" },
+            { type: "list", items: [
+              "**Fatigue/low energy**: Even 1–2% dehydration impairs energy metabolism and cognitive function.",
+              "**Brain fog/poor concentration**: Dehydration reduces cerebral blood flow and neurotransmitter production.",
+              "**Headaches/migraines**: Dehydration is a common trigger.",
+              "**Mood changes**: Irritability, anxiety, depression worsen with dehydration.",
+              "**Constipation**: Colon pulls water from stool when body is dehydrated.",
+              "**Dry skin/lips**: Skin turgor (elasticity) decreases.",
+              "**Muscle cramps**: Electrolyte imbalance from inadequate hydration.",
+              "**Increased hunger**: Thirst often misinterpreted as hunger.",
+            ]},
+            { type: "h", text: "Less obvious signs" },
+            { type: "list", items: [
+              "**Bad breath**: Saliva production decreases → dry mouth → bacterial overgrowth.",
+              "**Joint pain**: Cartilage is ~80% water; dehydration reduces cushioning.",
+              "**Reduced exercise performance**: Even 2% dehydration reduces strength, power, endurance.",
+              "**Frequent illness**: Mucous membranes dry out → easier pathogen entry.",
+              "**Water retention**: Paradoxically, chronic dehydration causes body to HOLD water.",
+            ]},
+            { type: "h", text: "Testing hydration status" },
+            { type: "list", items: [
+              "**Urine colour**: Pale yellow = good; dark = dehydrated.",
+              "**Urine frequency**: Every 2–4 hours = normal; less often = under-hydrated.",
+              "**Skin turgor test**: Pinch skin on back of hand; slow return = dehydrated.",
+              "**Body weight**: Morning weight fluctuation >1 kg often reflects fluid status.",
+            ]},
+            { type: "h", text: "Constitutional considerations" },
+            { type: "p", text: "Some approaches note that warm water with lemon supports liver/kidney function better than cold water. Herbal teas (dandelion, nettle) support kidney function. Some constitutions need more warm fluids; others less." },
+            { type: "check", qtype: "truefalse", q: "Thirst is always the first sign of dehydration.", correct: false, explain: "No — by the time you feel thirsty, you're already 1–2% dehydrated. Thirst LAGS behind actual need." },
+            { type: "callout", text: "Key insight: **Many 'mystery symptoms' resolve with better hydration.** Before assuming it's something serious, try drinking more water + electrolytes for a week." },
+          ],
+          quiz: [
+            { q: "What % dehydration impairs cognitive function?", options: ["0.1%", "1–2%", "5%", "10%"], correct: 1 },
+            { q: "Which is a sign of under-hydration?", options: ["Frequent urination", "Constipation", "Loose stools", "Clear urine"], correct: 1 },
+            { q: "What does the skin turgor test measure?", options: ["Skin colour", "Hydration status", "Sun damage", "Allergies"], correct: 1 },
+            { type: "multi", q: "Which are signs of dehydration?", options: ["Fatigue", "Headache", "Water retention", "Increased energy"], correct: [0, 1, 2], explain: "Fatigue, headache, and paradoxically water retention are signs of dehydration." },
+          ],
+        },
+        {
+          id: "5.4",
+          title: "Module 5 Review: Hydration & Everyday Physiology",
+          blocks: [
+            { type: "p", text: "Checking how much water you actually need, when plain water isn't enough, and the subtler signs of under-hydration people tend to miss." },
+          ],
+          quiz: [
+            { q: "What urine colour generally indicates good hydration?", options: ["Clear", "Pale yellow", "Dark yellow", "Brown"], correct: 1 },
+            { q: "What causes hyponatraemia?", options: ["Too much sodium", "Drinking too much plain water", "Too little water", "Too much potassium"], correct: 1 },
+            { q: "Which electrolyte is primarily lost in sweat during prolonged exercise?", options: ["Calcium", "Sodium", "Iron", "Zinc"], correct: 1 },
+            { type: "truefalse", q: "Thirst is a reliable early warning sign that appears before any meaningful dehydration has occurred.", correct: false, explain: "By the time you feel thirsty, you're already around 1-2% dehydrated — thirst lags behind actual need." },
+            { type: "multi", q: "Which of these are commonly MISSED signs of under-hydration, per Lesson 5.3?", options: ["Brain fog", "Constipation", "Increased energy", "Water retention"], correct: [0, 1, 3], explain: "Paradoxically, chronic under-hydration can cause the body to retain water, not just increased energy — which isn't a sign of dehydration at all." },
+            { q: "Roughly how much extra water should you add per hour of intense exercise?", options: ["None", "100 mL", "500-1000 mL", "5 L"], correct: 2 },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m6",
+      number: 6,
+      section: "Beyond the Basics",
+      title: "Performance & Supplementation",
+      description: "Creatine, protein supplements, other popular supplements, and nutrient timing.",
+      lessons: [
+        {
+          id: "6.1",
+          title: "Creatine — The Most-Studied Supplement",
+          blocks: [
+            { type: "p", text: "Creatine is one of the most researched and effective supplements for improving strength, power, and muscle mass. It's also being studied for cognitive and neurological benefits." },
+            { type: "h", text: "What creatine actually does" },
+            { type: "list", items: [
+              "Stored in muscles as **phosphocreatine (PCr)**.",
+              "Donates phosphate to ADP → regenerates ATP (primary energy currency) during short, intense efforts.",
+              "Powers the **ATP-PCr system** — dominant in efforts lasting ~10 seconds or less (sprints, heavy lifts).",
+              "Increases intramuscular water content (cell volumisation) → may signal muscle growth.",
+            ]},
+            { type: "h", text: "The evidence" },
+            { type: "list", items: [
+              "**Strength/power**: Consistently improves 1RM strength, sprint performance, power output (5–15% gains).",
+              "**Muscle mass**: Increases lean mass faster than training alone (especially in first 4–8 weeks).",
+              "**Cognitive function**: Emerging evidence for memory, mental fatigue reduction, especially in sleep-deprived or stressed individuals.",
+              "**Neurological**: Being studied for Parkinson's, Alzheimer's, traumatic brain injury (early but promising).",
+            ]},
+            { type: "h", text: "Loading/dosing/timing myths" },
+            { type: "list", items: [
+              "**Loading**: 20 g/day for 5–7 days saturates muscles faster, but NOT required. 3–5 g/day works fine — just takes 3–4 weeks to saturate.",
+              "**Dose**: 3–5 g/day is sufficient for most. Larger individuals may benefit from 5–10 g/day.",
+              "**Timing**: Post-workout may be slightly better than pre-workout, but total daily intake matters most.",
+              "**Cycling**: NOT necessary — can take continuously long-term.",
+            ]},
+            { type: "h", text: "Safety and who it's not for" },
+            { type: "list", items: [
+              "**Safety**: Extensively studied; safe for healthy individuals long-term (5+ years).",
+              "**Side effects**: Minor — water retention (intramuscular, not subcutaneous), occasional GI upset.",
+              "**Kidney concerns**: No evidence of harm in healthy kidneys. Those with pre-existing kidney disease should consult a doctor.",
+              "**Not for**: People with kidney disease, bipolar disorder (may exacerbate mania in rare cases).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "You must load creatine for it to work.", correct: false, explain: "Loading (20 g/day for 5–7 days) saturates muscles faster, but 3–5 g/day works fine — just takes 3–4 weeks to saturate." },
+            { type: "callout", text: "Bottom line: **Creatine monohydrate, 3–5 g/day, is safe and effective** for improving strength, power, and muscle mass. No need to load or cycle." },
+          ],
+          quiz: [
+            { q: "What energy system does creatine support?", options: ["Aerobic", "ATP-PCr", "Fat oxidation", "Glycolytic"], correct: 1 },
+            { q: "What is the standard daily dose?", options: ["1 g", "3–5 g", "10 g", "20 g"], correct: 1 },
+            { q: "Is creatine safe long-term?", options: ["No", "Yes, for healthy individuals", "Only if cycled", "Unknown"], correct: 1 },
+            { type: "multi", q: "What does creatine improve?", options: ["Strength", "Power", "Muscle mass", "Flexibility"], correct: [0, 1, 2], explain: "Creatine improves strength, power, and muscle mass. It does NOT improve flexibility." },
+          ],
+        },
+        {
+          id: "6.2",
+          title: "The Evidence: Strength, Power and Beyond",
+          blocks: [
+            { type: "p", text: "Creatine's benefits extend beyond just muscle. Let's examine the evidence across different domains." },
+            { type: "h", text: "Strength and power" },
+            { type: "list", items: [
+              "Meta-analyses show 5–15% improvements in 1RM strength (bench press, squat, deadlift).",
+              "Sprint performance improvements (5–10% in repeated sprints).",
+              "Power output increases in jumping, throwing, cycling sprints.",
+              "Greatest benefits in vegetarians/vegans (lower baseline creatine stores).",
+            ]},
+            { type: "h", text: "Muscle hypertrophy" },
+            { type: "list", items: [
+              "Faster lean mass gains in first 4–8 weeks of training.",
+              "Long-term: allows more training volume → more muscle over time.",
+              "Cell volumisation may directly stimulate muscle protein synthesis.",
+              "Especially effective in older adults (counters sarcopenia).",
+            ]},
+            { type: "h", text: "Cognitive function" },
+            { type: "list", items: [
+              "Improves working memory, especially in sleep-deprived or mentally fatigued individuals.",
+              "May reduce mental fatigue during demanding cognitive tasks.",
+              "Older adults show improvements in memory and cognitive processing.",
+              "Vegetarians show larger cognitive benefits (lower baseline brain creatine).",
+            ]},
+            { type: "h", text: "Neurological and clinical applications" },
+            { type: "list", items: [
+              "**Parkinson's disease**: Early studies show potential for slowing progression (being researched).",
+              "**Alzheimer's disease**: Animal studies promising; human trials ongoing.",
+              "**Traumatic brain injury**: May reduce damage and improve recovery (animal studies).",
+              "**Depression**: Some evidence for adjunctive treatment (small studies).",
+            ]},
+            { type: "h", text: "Who benefits most?" },
+            { type: "list", items: [
+              "Strength/power athletes (weightlifters, sprinters, team sports).",
+              "Older adults (counters muscle and cognitive decline).",
+              "Vegetarians/vegans (lower baseline stores).",
+              "People in calorie deficits (preserves muscle during weight loss).",
+            ]},
+            { type: "check", q: "Who shows the greatest creatine benefits?", options: ["Meat eaters", "Vegetarians/vegans", "Children", "Sedentary people"], correct: 1, explain: "Vegetarians/vegans have lower baseline creatine stores, so they show greater relative improvements from supplementation." },
+            { type: "callout", text: "Key takeaway: **Creatine isn't just for bodybuilders.** Older adults, vegetarians, and anyone doing strength training can benefit." },
+          ],
+          quiz: [
+            { q: "What % strength improvement does creatine provide?", options: ["1–2%", "5–15%", "20–30%", "50%+"], correct: 1 },
+            { q: "Who benefits most cognitively from creatine?", options: ["Young adults", "Older adults", "Children", "No one"], correct: 1 },
+            { q: "Which condition is creatine being studied for?", options: ["Diabetes", "Parkinson's disease", "Asthma", "Arthritis"], correct: 1 },
+            { type: "truefalse", q: "Creatine helps preserve muscle during calorie deficits.", correct: true, explain: "Yes — creatine helps preserve lean mass during weight loss/calorie restriction." },
+          ],
+        },
+        {
+          id: "6.3",
+          title: "Loading/Dosing/Timing Myths",
+          blocks: [
+            { type: "p", text: "There's a lot of confusion and marketing hype around how to take creatine. Let's separate fact from fiction." },
+            { type: "h", text: "Loading: necessary or not?" },
+            { type: "list", items: [
+              "**Loading protocol**: 20 g/day (split into 4 doses of 5 g) for 5–7 days.",
+              "**Purpose**: Saturates muscle creatine stores rapidly (~1 week vs ~3–4 weeks).",
+              "**Necessary?**: NO. 3–5 g/day works fine — just takes longer to saturate.",
+              "**Downsides**: GI upset, bloating, unnecessary expense.",
+            ]},
+            { type: "h", text: "Dosing: how much is enough?" },
+            { type: "list", items: [
+              "**Standard dose**: 3–5 g/day for most people.",
+              "**Larger individuals**: May benefit from 5–10 g/day (based on muscle mass).",
+              "**Maintenance**: Once saturated, 3–5 g/day maintains stores.",
+              "**More is NOT better**: Excess is excreted in urine; no additional benefit beyond saturation.",
+            ]},
+            { type: "h", text: "Timing: does it matter?" },
+            { type: "list", items: [
+              "**Pre-workout**: Some studies show slight benefit.",
+              "**Post-workout**: Slightly better absorption due to insulin spike from post-workout meal.",
+              "**Any time**: Total daily intake matters most — timing is secondary.",
+              "**With carbs/protein**: Insulin enhances creatine uptake — take with a meal.",
+            ]},
+            { type: "h", text: "Cycling: necessary or not?" },
+            { type: "list", items: [
+              "**Myth**: You need to cycle creatine (e.g. 8 weeks on, 2 weeks off).",
+              "**Reality**: NO evidence cycling is necessary. Can take continuously long-term.",
+              "**Why the myth?**: Early concerns about kidney stress (debunked); marketing (sell more).",
+            ]},
+            { type: "h", text: "Form: which type of creatine?" },
+            { type: "list", items: [
+              "**Creatine monohydrate**: Most researched, cheapest, most effective. Period.",
+              "**Other forms** (HCl, ethyl ester, nitrate, etc.): More expensive, no proven advantage.",
+              "**Micronised monohydrate**: Slightly better solubility — worth the small premium.",
+            ]},
+            { type: "check", qtype: "truefalse", q: "You need to cycle creatine (e.g. 8 weeks on, 2 weeks off).", correct: false, explain: "NO evidence cycling is necessary. Creatine can be taken continuously long-term safely." },
+            { type: "callout", text: "Simple protocol: **3–5 g creatine monohydrate per day, with any meal, no loading, no cycling.** That's it." },
+          ],
+          quiz: [
+            { q: "What is the standard daily creatine dose?", options: ["1 g", "3–5 g", "10 g", "20 g"], correct: 1 },
+            { q: "Is loading necessary?", options: ["Yes", "No", "Only for athletes", "Only for vegans"], correct: 1 },
+            { q: "Which form of creatine is best?", options: ["HCl", "Ethyl ester", "Monohydrate", "Nitrate"], correct: 2 },
+            { type: "truefalse", q: "Timing of creatine intake is more important than total daily intake.", correct: false, explain: "Total daily intake matters most. Timing is secondary — take it whenever is convenient." },
+          ],
+        },
+        {
+          id: "6.4",
+          title: "Safety and Who It's Not For",
+          blocks: [
+            { type: "p", text: "Creatine is one of the safest supplements available — but it's not for everyone. Let's examine the safety data and contraindications." },
+            { type: "h", text: "Safety in healthy individuals" },
+            { type: "list", items: [
+              "**Extensively studied**: 30+ years of research, thousands of participants.",
+              "**Long-term safety**: Studies up to 5+ years show no adverse effects in healthy individuals.",
+              "**Kidney function**: No evidence of harm in healthy kidneys. Creatinine (waste product) increases, but this is NORMAL — not a sign of damage.",
+              "**Liver function**: No adverse effects on liver enzymes.",
+              "**Cardiovascular**: No adverse effects on blood pressure or heart function.",
+            ]},
+            { type: "h", text: "Common side effects" },
+            { type: "list", items: [
+              "**Water retention**: Intramuscular (in muscle cells), not subcutaneous (under skin). May cause 1–2 kg weight gain initially.",
+              "**GI upset**: Occasional bloating, cramping, diarrhoea — usually from high doses or loading.",
+              "**Muscle cramps**: Anecdotal reports; studies show NO increase vs placebo.",
+            ]},
+            { type: "h", text: "Who should avoid creatine?" },
+            { type: "list", items: [
+              "**Pre-existing kidney disease**: Those with diagnosed kidney dysfunction should consult a doctor first.",
+              "**Bipolar disorder**: Rare case reports of creatine exacerbating mania — use caution.",
+              "**Pregnancy/breastfeeding**: Not enough safety data — best to avoid until more research.",
+              "**Under 18**: Limited safety data in adolescents — though some studies in young athletes show no issues.",
+            ]},
+            { type: "h", text: "Drug interactions" },
+            { type: "list", items: [
+              "**NSAIDs** (ibuprofen, naproxen): Theoretical concern for kidney stress when combined with high-dose creatine — limited evidence.",
+              "**Diuretics**: May increase dehydration risk — ensure adequate hydration.",
+              "**Caffeine**: Some evidence caffeine may blunt creatine's effects — separate by a few hours if concerned.",
+            ]},
+            { type: "h", text: "Monitoring" },
+            { type: "list", items: [
+              "Healthy individuals: no monitoring needed.",
+              "Those with kidney concerns: get baseline kidney function (creatinine, eGFR) before starting, re-test after 4–8 weeks.",
+              "Stay well-hydrated (creatine pulls water into muscle cells).",
+            ]},
+            { type: "check", q: "Which group should consult a doctor before taking creatine?", options: ["Healthy adults", "People with kidney disease", "Athletes", "Older adults"], correct: 1, explain: "People with pre-existing kidney disease should consult a doctor before starting creatine supplementation." },
+            { type: "callout", text: "Bottom line: **Creatine is safe for healthy individuals long-term.** If you have kidney disease, bipolar disorder, or are pregnant, consult a doctor first." },
+          ],
+          quiz: [
+            { q: "How long has creatine been studied?", options: ["5 years", "10 years", "30+ years", "1 year"], correct: 2 },
+            { q: "What is the most common side effect?", options: ["Kidney damage", "Water retention", "Liver damage", "Heart problems"], correct: 1 },
+            { q: "Who should avoid creatine?", options: ["Healthy adults", "Older adults", "People with kidney disease", "Athletes"], correct: 2 },
+            { type: "truefalse", q: "Creatine increases creatinine levels, which indicates kidney damage.", correct: false, explain: "Creatine increases creatinine (a waste product), but this is NORMAL — NOT a sign of kidney damage in healthy individuals." },
+          ],
+        },
+        {
+          id: "6.5",
+          kind: "case-study",
+          title: "Case Study: Should Maya Take Creatine?",
+          blocks: [
+            { type: "p", text: "**Maya, 17, plays competitive volleyball.** She trains 5 days a week, wants more explosive power for jumping, and has read that creatine 'makes you bulky' and 'damages your kidneys'. Her older brother does a loading phase of 20g/day for a week, then drops to 5g/day. Maya isn't sure what to believe, or whether the loading phase even matters." },
+            { type: "h", text: "What the loading phase actually does" },
+            { type: "diagram", kind: "loadingPhaseChart" },
+            { type: "p", text: "The loading phase isn't a different substance or a bigger effect — it's the same daily maintenance amount, just front-loaded to saturate muscle creatine stores faster (roughly a week, instead of 3-4 weeks at a flat 3-5g/day the whole way)." },
+            { type: "h", text: "Applying what you already know from this module" },
+            { type: "list", items: [
+              "From **Lesson 6.1-6.2**: creatine is one of the most-studied supplements in sports nutrition, with strong evidence for power and strength gains.",
+              "From **Lesson 6.3**: the 'bulky' fear is usually about early water retention inside muscle cells, not fat gain — and it's not universal.",
+              "From **Lesson 6.4**: it's not recommended for people with existing kidney disease, but is not shown to harm kidney function in healthy people.",
+            ]},
+            { type: "callout", text: "Notice this case doesn't have one single 'correct' verdict handed to you — the goal is applying Module 6's evidence to Maya's specific situation (a healthy teenage athlete, no kidney issues, wanting a specific performance outcome), not reciting a rule." },
+            { type: "check", q: "Is Maya's brother's description of creatine 'loading' accurate?", options: ["No, loading is a completely different, more dangerous substance", "Yes — loading is the same substance, just a higher daily dose for about a week to saturate stores faster", "No, loading has no effect on anything", "Yes, but only for people over 18"], correct: 1, explain: "Loading is simply a temporarily higher daily dose of the same creatine, to reach saturation faster than the slower flat-dose approach." },
+          ],
+          quiz: [
+            { q: "Based on what Module 6 has covered so far, is creatine an unreasonable choice for a healthy teenage athlete like Maya with no kidney issues?", options: ["Yes, it should never be considered for anyone under 18 regardless of health", "No — the evidence base doesn't show harm to kidney function in healthy people, though checking with a doctor/dietitian first is still sensible for a minor", "Yes, because loading always causes permanent bulk gain", "No, because loading is required for it to work at all"], correct: 1 },
+            { type: "truefalse", q: "Skipping the loading phase entirely means creatine won't work for Maya.", correct: false, explain: "Loading only changes how fast muscle stores saturate — a flat lower daily dose reaches the same saturation eventually, just over roughly 3-4 weeks instead of about one." },
+            { type: "type", q: "Fill in the blank: the main population creatine is specifically not recommended for, based on Lesson 6.4, is people with existing ______ disease.", accepted: ["kidney", "renal"], explain: "Lesson 6.4 covers kidney (renal) disease as the key population where creatine isn't recommended." },
+          ],
+        },
+        {
+          id: "6.6",
+          title: "Protein Supplementation",
+          blocks: [
+            { type: "p", text: "Protein powders are popular, but do you actually need one? Let's examine the evidence and practical considerations." },
+            { type: "h", text: "Whey vs casein vs plant-based" },
+            { type: "list", items: [
+              "**Whey**: Fast-digesting, high in leucine, excellent for post-workout. Contains all EAAs. May cause GI issues in lactose-sensitive individuals.",
+              "**Casein**: Slow-digesting, forms gel in stomach, good for before bed. Also high in EAAs. Better tolerated by some lactose-sensitive people.",
+              "**Plant-based** (pea, rice, soy, hemp): Soy is complete; pea+rice blend approaches whey quality. Lower leucine (may need larger doses). Better for vegans, lactose-intolerant, or those avoiding dairy.",
+            ]},
+            { type: "h", text: "Do you actually need a shake?" },
+            { type: "list", items: [
+              "**No, if**: You hit protein targets from whole foods (most people can).",
+              "**Yes, if**: You struggle to meet protein needs from food alone (busy schedule, low appetite, vegan, calorie deficit).",
+              "**Convenience**: Shakes are quick, portable, and often cheaper per gram of protein than whole foods.",
+              "**Not magic**: Whole foods provide additional nutrients (vitamins, minerals, fibre) that powders lack.",
+            ]},
+            { type: "h", text: "Reading a supplement label properly" },
+            { type: "list", items: [
+              "**Protein per serving**: Look for 20–30 g per scoop. Less than 20 g = mostly fillers.",
+              "**Protein source**: Should be clearly listed (whey isolate, pea protein, etc.).",
+              "**Amino acid profile**: Some brands list this — check leucine content (should be 2–3 g per serving).",
+              "**Added sugars**: Avoid or minimise. Many powders have 5–10 g added sugar per serving.",
+              "**Artificial sweeteners**: Sucralose, aspartame, acesulfame-K — some people experience GI issues.",
+              "**Third-party testing**: Look for NSF Certified for Sport, Informed Choice, or similar — ensures no banned substances.",
+            ]},
+            { type: "h", text: "Quality considerations" },
+            { type: "p", text: "Grass-fed whey may have better fatty acid profiles. Organic plant proteins reduce pesticide exposure. Fermented proteins may improve digestibility. Some prefer whole-food protein sources (bone broth protein, egg white protein) over isolates." },
+            { type: "check", q: "Which protein is fastest-digesting?", options: ["Casein", "Whey", "Soy", "Rice"], correct: 1, explain: "Whey is fast-digesting, making it ideal for post-workout. Casein is slow-digesting." },
+            { type: "callout", text: "Bottom line: **Protein powders are convenient, not necessary.** Use if they help you hit protein targets, but whole foods should be your primary source." },
+          ],
+          quiz: [
+            { q: "Which protein is best before bed?", options: ["Whey", "Casein", "Rice", "Soy"], correct: 1 },
+            { q: "How much protein should a good powder have per serving?", options: ["5–10 g", "10–15 g", "20–30 g", "40–50 g"], correct: 2 },
+            { q: "Which certification ensures no banned substances?", options: ["Organic", "NSF Certified for Sport", "Non-GMO", "Gluten-free"], correct: 1 },
+            { type: "truefalse", q: "Protein powders are necessary for building muscle.", correct: false, explain: "No — you can build muscle with whole food protein alone. Powders are just convenient." },
+          ],
+        },
+        {
+          id: "6.7",
+          title: "Other Popular Supplements",
+          blocks: [
+            { type: "p", text: "Beyond creatine and protein, many supplements claim performance or health benefits. Let's separate evidence from hype." },
+            { type: "h", text: "Caffeine as a performance aid" },
+            { type: "list", items: [
+              "**Mechanism**: Adenosine receptor antagonist → reduces perceived effort, increases alertness, mobilises fatty acids.",
+              "**Dose**: 3–6 mg/kg body weight (200–400 mg for most people), 30–60 min before exercise.",
+              "**Benefits**: Improved endurance, strength, power, cognitive function, fat oxidation.",
+              "**Side effects**: Anxiety, insomnia, GI upset, increased heart rate, tolerance/dependence.",
+              "**Timing**: Avoid within 6–8 hours of bedtime. Cycle use to prevent tolerance.",
+            ]},
+            { type: "h", text: "BCAAs/EAAs — hype vs evidence" },
+            { type: "list", items: [
+              "**BCAAs** (leucine, isoleucine, valine): Marketed for muscle growth/recovery. Evidence: minimal benefit if total protein intake is adequate. Leucine is the key driver — isolated BCAAs inferior to complete protein.",
+              "**EAAs** (all 9 essential amino acids): Better than BCAAs, but still inferior to whole protein sources. May be useful intra-workout for fasted training or very long sessions.",
+              "**Bottom line**: Save your money — get EAAs from whole protein (whey, meat, eggs, soy). BCAAs are largely marketing hype.",
+            ]},
+            { type: "h", text: "Pre-workout ingredients explained" },
+            { type: "list", items: [
+              "**Caffeine**: Proven ergogenic aid (see above).",
+              "**Beta-alanine**: Buffers acid in muscles → may improve high-intensity efforts >60 seconds. Dose: 3–5 g/day. Side effect: paraesthesia (tingling).",
+              "**Citrulline malate**: Increases nitric oxide → may improve blood flow, reduce fatigue. Dose: 6–8 g. Evidence: mixed but promising.",
+              "**Creatine**: Often included (see earlier lessons).",
+              "**Proprietary blends**: Red flag — hides individual ingredient doses. Avoid.",
+            ]},
+            { type: "h", text: "Other commonly marketed supplements" },
+            { type: "list", items: [
+              "**Omega-3 (fish oil)**: 1–3 g EPA+DHA/day for inflammation, heart health, brain function. Evidence: strong.",
+              "**Vitamin D**: 1000–5000 IU/day if deficient or limited sun exposure. Evidence: strong for deficient individuals.",
+              "**Magnesium**: 200–400 mg glycinate/citrate for sleep, muscle relaxation. Evidence: strong for deficient individuals.",
+              "**Zinc**: 15–30 mg/day short-term for immune support. Don't exceed 40 mg long-term (depletes copper).",
+              "**Probiotics**: Strain-specific benefits (e.g. L. rhamnosus for gut health). Not one-size-fits-all.",
+            ]},
+            { type: "h", text: "Supplements with weak or no evidence" },
+            { type: "list", items: [
+              "Fat burners (most are underdosed caffeine + fillers).",
+              "Testosterone boosters (most don't work; those that do have side effects).",
+              "Glutamine (for muscle — useful for gut health in specific conditions).",
+              "Most 'proprietary blends' (underdosed, hidden ingredients).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "BCAAs are superior to whole protein for muscle growth.", correct: false, explain: "No — BCAAs are inferior to complete protein sources. If total protein intake is adequate, BCAAs provide minimal additional benefit." },
+            { type: "callout", text: "Golden rule: **Supplements are the last 5%.** Dial in diet, training, sleep, and stress management first. Then consider evidence-based supplements." },
+          ],
+          quiz: [
+            { q: "What is the effective caffeine dose for performance?", options: ["1–2 mg/kg", "3–6 mg/kg", "10–15 mg/kg", "20+ mg/kg"], correct: 1 },
+            { q: "Which supplement buffers muscle acid?", options: ["Creatine", "Beta-alanine", "BCAAs", "Glutamine"], correct: 1 },
+            { q: "What does citrulline malate do?", options: ["Increases testosterone", "Increases nitric oxide", "Decreases cortisol", "Blocks oestrogen"], correct: 1 },
+            { type: "multi", q: "Which supplements have strong evidence?", options: ["Omega-3", "Vitamin D (if deficient)", "Fat burners", "Magnesium (if deficient)"], correct: [0, 1, 3], explain: "Omega-3, vitamin D (if deficient), and magnesium (if deficient) have strong evidence. Most fat burners do not." },
+          ],
+        },
+        {
+          id: "6.8",
+          title: "Nutrient Timing",
+          blocks: [
+            { type: "p", text: "Does meal timing matter for muscle growth? Is the 'anabolic window' real? Let's examine the evidence." },
+            { type: "h", text: "Does meal timing matter for muscle growth?" },
+            { type: "list", items: [
+              "**Total daily intake matters most**: As long as you hit protein/calorie targets, exact timing is secondary.",
+              "**Protein distribution**: Spreading protein across 3–5 meals (20–40 g each) may optimise muscle protein synthesis vs one or two large meals.",
+              "**Pre-sleep protein**: 20–40 g casein before bed may enhance overnight recovery (especially in athletes).",
+              "**Fasted training**: Can work, but may impair performance and increase muscle breakdown in some individuals.",
+            ]},
+            { type: "h", text: "The 'anabolic window' — myth or real?" },
+            { type: "list", items: [
+              "**The myth**: You MUST consume protein within 30 min post-workout or you 'miss the window' and lose gains.",
+              "**The reality**: The window is much larger than 30 min — likely 3–5 hours post-workout. What you ate pre-workout also matters.",
+              "**If you trained fasted**: Post-workout protein is more important (you're in a catabolic state).",
+              "**If you ate pre-workout**: Post-workout timing is less critical (amino acids are still available from that meal).",
+            ]},
+            { type: "h", text: "Practical pre-/post-workout nutrition" },
+            { type: "list", items: [
+              "**Pre-workout (1–3 hours before)**: 20–40 g protein + 30–60 g carbs. Low fat/fibre (slows digestion). Examples: chicken + rice, Greek yogurt + fruit, protein shake + banana.",
+              "**Post-workout (within 3–5 hours)**: 20–40 g protein + 30–60 g carbs. Replenishes glycogen, stimulates muscle protein synthesis. Examples: same as pre-workout.",
+              "**Intra-workout**: Only necessary for sessions >90 min. 20–30 g carbs + electrolytes (sports drink, dextrose).",
+              "**Not training?** Meal timing is even less important — focus on total daily intake and consistency.",
+            ]},
+            { type: "h", text: "Individual considerations" },
+            { type: "p", text: "Some people feel better training fasted (less GI distress, mental clarity). Others need pre-workout fuel (performance, energy). Experiment and see what works for YOU. GI tolerance varies — some can't handle solid food pre-workout; others need it." },
+            { type: "check", q: "How long is the 'anabolic window'?", options: ["30 minutes", "1 hour", "3–5 hours", "24 hours"], correct: 2, explain: "The anabolic window is much larger than 30 min — likely 3–5 hours post-workout." },
+            { type: "callout", text: "Bottom line: **Total daily intake > timing.** But spreading protein across meals and having pre/post-workout nutrition can provide a small edge." },
+          ],
+          quiz: [
+            { q: "What matters most for muscle growth?", options: ["Meal timing", "Total daily protein", "Pre-workout meal", "Post-workout shake"], correct: 1 },
+            { q: "How long is the anabolic window?", options: ["30 min", "1 hour", "3–5 hours", "24 hours"], correct: 2 },
+            { q: "What should a pre-workout meal include?", options: ["High fat", "High fibre", "Protein + carbs", "Only protein"], correct: 2 },
+            { type: "truefalse", q: "You MUST eat within 30 minutes post-workout or you lose gains.", correct: false, explain: "No — the anabolic window is 3–5 hours. What you ate pre-workout also matters." },
+          ],
+        },
+        {
+          id: "6.9",
+          title: "Module 6 Review: Performance & Supplementation",
+          blocks: [
+            { type: "p", text: "The big one — creatine's mechanism and evidence, loading myths, safety, the Maya case study, protein powders, other popular supplements, and nutrient timing, all mixed together." },
+          ],
+          quiz: [
+            { q: "What energy system does creatine primarily support?", options: ["Aerobic", "ATP-PCr", "Fat oxidation", "Glycolytic"], correct: 1 },
+            { type: "truefalse", q: "Loading creatine (20 g/day for about a week) is required for it to eventually work.", correct: false, explain: "Loading just reaches saturation faster. A flat 3-5 g/day works fine too, just over roughly 3-4 weeks instead of about one." },
+            { q: "In a healthy person, an elevated creatinine reading from creatine supplementation indicates:", options: ["Kidney damage", "A normal, harmless increase in a waste product", "Liver damage", "Dehydration"], correct: 1 },
+            { q: "In the Maya case study, what's the main population creatine is specifically not recommended for?", options: ["People over 30", "People with kidney disease", "People who lift weights", "Vegetarians"], correct: 1 },
+            { q: "Roughly how much protein should a good-quality protein powder contain per scoop?", options: ["5-10 g", "10-15 g", "20-30 g", "40-50 g"], correct: 2 },
+            { q: "What is the effective caffeine dose range for a genuine performance benefit?", options: ["1-2 mg/kg", "3-6 mg/kg", "10-15 mg/kg", "20+ mg/kg"], correct: 1 },
+            { q: "How long does the research actually suggest the 'anabolic window' is?", options: ["30 minutes", "1 hour", "3-5 hours", "24 hours"], correct: 2 },
+            { type: "multi", q: "Which of these have strong evidence behind them, per Lesson 6.7?", options: ["Omega-3", "Vitamin D (if deficient)", "Fat burners", "Magnesium (if deficient)"], correct: [0, 1, 3], explain: "Omega-3 and magnesium/vitamin D (when deficient) are well-supported. Most fat burners are underdosed caffeine plus fillers." },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m7",
+      number: 7,
+      section: "Beyond the Basics",
+      title: "The Alternative & Naturopathic Lens",
+      description: "Naturopathic nutrition, gut health, elimination diets, adaptogens, fasting, and food quality.",
+      lessons: [
+        {
+          id: "7.1",
+          title: "What Is Naturopathic Nutrition?",
+          blocks: [
+            { type: "p", text: "Naturopathic nutrition is a holistic approach that views food as medicine. It emphasises whole foods, individualisation, and traditional wisdom alongside (or sometimes instead of) conventional science." },
+            { type: "h", text: "Food-as-medicine philosophy" },
+            { type: "list", items: [
+              "Food is not just fuel — it's information that tells your genes how to express.",
+              "Every meal is an opportunity to heal or harm.",
+              "Emphasis on nutrient-dense, whole, unprocessed foods.",
+              "Cooking methods matter (fermentation, slow-cooking, sprouting enhance nutrition).",
+            ]},
+            { type: "h", text: "Whole foods vs isolated nutrients" },
+            { type: "list", items: [
+              "**Food matrix**: Nutrients in whole foods come with co-factors (enzymes, phytonutrients, fibre) that aid absorption and function.",
+              "**Synergy**: Nutrients work together (e.g. vitamin C enhances iron absorption; vitamin D needs K2 and magnesium).",
+              "**Isolated nutrients**: May not work the same (e.g. synthetic vitamin E vs mixed tocopherols from food).",
+              "**Supplements have their place**: For deficiencies, specific conditions, or when food isn't enough — but food first.",
+            ]},
+            { type: "h", text: "Bio-individuality — the contested idea" },
+            { type: "list", items: [
+              "No one-size-fits-all — what works varies by person (genetics, gut microbiome, lifestyle, constitution).",
+              "Conventional nutrition: population-level guidelines (RDAs, AMDRs).",
+              "Naturopathic nutrition: individualised protocols based on testing, symptoms, and constitution.",
+              "Controversy: How much does bio-individuality matter? Some argue genetics/microbiome explain only 20–30% of variation; others say it's 80%+.",
+            ]},
+            { type: "h", text: "Where naturopathic and mainstream agree/disagree" },
+            { type: "list", items: [
+              "**Agree**: Eat more vegetables, minimise ultra-processed foods, protein is essential, omega-3s are important.",
+              "**Disagree**: Saturated fat (limit vs fine from quality sources), grains (recommend vs grain-free), supplements (isolates OK vs food-based), calories (count vs quality/hormones).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "Naturopathic nutrition emphasises isolated supplements over whole foods.", correct: false, explain: "No — naturopathic nutrition emphasises WHOLE foods over isolated supplements. Supplements are used strategically, but food first." },
+            { type: "callout", text: "Key principle: **Food as medicine, individualised, whole foods first.** This is the core of naturopathic nutrition." },
+          ],
+          quiz: [
+            { q: "What does naturopathic nutrition emphasise?", options: ["Isolated supplements", "Whole foods", "Calorie counting", "Population guidelines"], correct: 1 },
+            { q: "What is bio-individuality?", options: ["One-size-fits-all", "Individual variation in nutritional needs", "Genetic testing only", "Microbiome testing only"], correct: 1 },
+            { q: "Where do both paradigms agree?", options: ["Saturated fat is bad", "Eat more vegetables", "Grains are essential", "Calories don't matter"], correct: 1 },
+            { type: "multi", q: "Which are naturopathic nutrition principles?", options: ["Food as medicine", "Bio-individuality", "Population averages", "Whole foods"], correct: [0, 1, 3], explain: "Food as medicine, bio-individuality, and whole foods are naturopathic principles. Population averages are mainstream." },
+          ],
+        },
+        {
+          id: "7.2",
+          title: "Gut Health & the Microbiome",
+          blocks: [
+            { type: "p", text: "Your gut microbiome — the trillions of bacteria, fungi, and viruses living in your digestive tract — plays a crucial role in digestion, immunity, mood, and even chronic disease." },
+            { type: "h", text: "What the microbiome actually does" },
+            { type: "list", items: [
+              "**Digestion**: Breaks down fibre, produces short-chain fatty acids (butyrate, acetate, propionate).",
+              "**Immunity**: 70–80% of immune cells are in the gut. Microbiome trains and regulates immune function.",
+              "**Neurotransmitters**: Produces serotonin (90% of body's serotonin), GABA, dopamine.",
+              "**Metabolism**: Influences energy harvest from food, fat storage, insulin sensitivity.",
+              "**Gut barrier**: Maintains intestinal lining integrity (prevents 'leaky gut').",
+            ]},
+            { type: "h", text: "Probiotics, prebiotics, fermented foods" },
+            { type: "list", items: [
+              "**Probiotics**: Live beneficial bacteria. Strain-specific benefits (e.g. L. rhamnosus for gut health, B. longum for mood). Not one-size-fits-all.",
+              "**Prebiotics**: Fibre that feeds beneficial bacteria. Sources: onions, garlic, asparagus, Jerusalem artichokes, dandelion greens.",
+              "**Fermented foods**: Contain live bacteria + metabolites. Sources: yogurt, kefir, sauerkraut, kimchi, miso, tempeh. Often superior to probiotic supplements.",
+            ]},
+            { type: "h", text: "'Leaky gut' — evidence vs fringe claims" },
+            { type: "list", items: [
+              "**What it is**: Increased intestinal permeability — tight junctions between gut cells become loose, allowing undigested food particles, toxins, and bacteria into bloodstream.",
+              "**Evidence**: Real phenomenon, documented in research. Associated with IBS, IBD, celiac disease, obesity, diabetes, autoimmune conditions.",
+              "**Fringe claims**: 'Leaky gut causes ALL disease' — overstated. It's ONE factor among many.",
+              "**Causes**: Poor diet (low fibre, high sugar/processed foods), chronic stress, antibiotics, NSAIDs, alcohol, infections.",
+              "**Solutions**: High-fibre diet, fermented foods, probiotics (specific strains), stress management, sleep, reduce alcohol/NSAIDs.",
+            ]},
+            { type: "h", text: "Testing and interventions" },
+            { type: "list", items: [
+              "**Stool tests**: GI-MAP, Genova, Doctor's Data — assess microbiome composition, pathogens, inflammation markers.",
+              "**Zonulin test**: Blood test for intestinal permeability (zonulin is a protein that regulates tight junctions).",
+              "**Interventions**: 5R protocol (Remove, Replace, Reinoculate, Repair, Rebalance) — functional medicine approach.",
+            ]},
+            { type: "check", q: "What percentage of the body's serotonin is produced in the gut?", options: ["10%", "50%", "90%", "100%"], correct: 2, explain: "Approximately 90% of the body's serotonin is produced in the gut by the microbiome and enterochromaffin cells." },
+            { type: "callout", text: "Key insight: **Gut health is foundational.** If your gut isn't working, nothing else works optimally. Prioritise fibre, fermented foods, and stress management." },
+          ],
+          quiz: [
+            { q: "What does the microbiome produce from fibre?", options: ["Glucose", "Short-chain fatty acids", "Protein", "Cholesterol"], correct: 1 },
+            { q: "Which food is a good source of probiotics?", options: ["White rice", "Sauerkraut", "Chicken", "Butter"], correct: 1 },
+            { q: "What is 'leaky gut'?", options: ["Normal digestion", "Increased intestinal permeability", "Stomach ulcer", "Acid reflux"], correct: 1 },
+            { type: "truefalse", q: "70–80% of immune cells are in the gut.", correct: true, explain: "Yes — the majority of immune cells reside in the gut-associated lymphoid tissue (GALT)." },
+          ],
+        },
+        {
+          id: "7.3",
+          title: "Elimination Diets & Food Sensitivities",
+          blocks: [
+            { type: "p", text: "Food sensitivities are increasingly recognised as contributors to chronic symptoms (bloating, fatigue, headaches, skin issues, mood problems). Elimination diets are the gold standard for identifying triggers." },
+            { type: "h", text: "Allergy vs intolerance vs sensitivity" },
+            { type: "list", items: [
+              "**Allergy (IgE-mediated)**: Immediate, potentially life-threatening immune response. Examples: peanuts, shellfish. Diagnosed via skin prick or IgE blood tests.",
+              "**Intolerance**: Non-immune reaction, often dose-dependent. Examples: lactose intolerance (enzyme deficiency), histamine intolerance. Diagnosed via elimination/rechallenge.",
+              "**Sensitivity (IgG/IgA-mediated)**: Delayed immune response (hours to days). Examples: gluten, dairy, eggs. IgG tests are controversial (may reflect exposure, not sensitivity). Elimination diet is gold standard.",
+            ]},
+            { type: "h", text: "How an elimination diet works" },
+            { type: "list", items: [
+              "**Phase 1: Elimination** (2–6 weeks): Remove common trigger foods (gluten, dairy, eggs, soy, corn, nuts, nightshades, alcohol, caffeine, sugar).",
+              "**Phase 2: Reintroduction** (1–2 weeks per food): Systematically reintroduce one food at a time, monitoring symptoms.",
+              "**Phase 3: Personalisation**: Based on reactions, create a long-term diet that avoids triggers but is as varied as possible.",
+              "**Track symptoms**: Use a journal (digestive, skin, mood, energy, sleep, headaches, joint pain).",
+            ]},
+            { type: "h", text: "Gluten-free/dairy-free/FODMAP, examined" },
+            { type: "list", items: [
+              "**Gluten-free**: Essential for celiac disease (autoimmune). May help non-celiac gluten sensitivity (NCGS). Not necessary for everyone — whole grains have benefits.",
+              "**Dairy-free**: Essential for lactose intolerance or casein/whey allergy. May help acne, IBS, autoimmune conditions. Fermented dairy (yogurt, kefir) often better tolerated.",
+              "**Low-FODMAP**: For IBS (reduces fermentable carbs that cause bloating/gas). NOT long-term — reduces beneficial prebiotics. Reintroduce as tolerated.",
+            ]},
+            { type: "h", text: "Common pitfalls" },
+            { type: "list", items: [
+              "Not eliminating strictly enough (hidden ingredients, cross-contamination).",
+              "Reintroducing too many foods at once (can't identify trigger).",
+              "Staying in elimination phase too long (nutrient deficiencies, disordered eating).",
+              "Over-restricting (unnecessary fear of foods, social isolation).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "IgG food sensitivity tests are the gold standard for diagnosing food sensitivities.", correct: false, explain: "No — IgG tests are controversial (may reflect exposure, not sensitivity). Elimination diet with systematic reintroduction is the gold standard." },
+            { type: "callout", text: "Important: **Work with a practitioner** if doing an elimination diet, especially if you have a history of disordered eating or nutrient deficiencies." },
+          ],
+          quiz: [
+            { q: "What is the gold standard for identifying food sensitivities?", options: ["IgG test", "Skin prick test", "Elimination diet", "Blood glucose test"], correct: 2 },
+            { q: "How long is the elimination phase?", options: ["1–2 days", "2–6 weeks", "6 months", "1 year"], correct: 1 },
+            { q: "What is FODMAP?", options: ["Protein", "Fermentable carbs", "Fat", "Vitamin"], correct: 1 },
+            { type: "multi", q: "Which are common trigger foods?", options: ["Gluten", "Dairy", "Rice", "Eggs"], correct: [0, 1, 3], explain: "Gluten, dairy, and eggs are common triggers. Rice is generally well-tolerated." },
+          ],
+        },
+        {
+          id: "7.4",
+          title: "Adaptogens & Herbal Nutrition",
+          blocks: [
+            { type: "p", text: "Adaptogens are herbs that help the body 'adapt' to stress — physical, chemical, or biological. They've been used in traditional medicine (Ayurveda, Traditional Chinese Medicine) for thousands of years and are now being studied scientifically." },
+            { type: "h", text: "What 'adaptogen' means and what evidence says" },
+            { type: "list", items: [
+              "**Definition**: Non-toxic herbs that increase non-specific resistance to stress, normalise physiological function (homeostasis).",
+              "**Criteria**: Must be safe, support overall health, help body adapt to stress, normalise function (not stimulate or sedate).",
+              "**Evidence**: Promising but limited. Most studies are small, short-term, or in animals. More rigorous human trials needed.",
+              "**Mechanism**: Modulate HPA axis (hypothalamic-pituitary-adrenal), regulate cortisol, support mitochondrial function, antioxidant/anti-inflammatory effects.",
+            ]},
+            { type: "h", text: "Ashwagandha, rhodiola, ginseng" },
+            { type: "list", items: [
+              "**Ashwagandha** (Withania somnifera): Reduces cortisol, anxiety, improves sleep, may increase testosterone in men. Dose: 300–600 mg extract (KSM-66 or Sensoril) 1–2x/day.",
+              "**Rhodiola** (Rhodiola rosea): Reduces fatigue, improves mental performance under stress. Dose: 200–400 mg extract (3% rosavins, 1% salidroside) morning/early afternoon.",
+              "**Ginseng** (Panax ginseng, American ginseng): Improves energy, cognitive function, immune function, blood sugar control. Dose: 200–400 mg extract (standardised to ginsenosides).",
+            ]},
+            { type: "h", text: "Other notable adaptogens" },
+            { type: "list", items: [
+              "**Holy basil (Tulsi)**: Reduces cortisol, anxiety, blood sugar. Tea or 300–600 mg extract.",
+              "**Maca**: Energy, libido, hormonal balance (especially women). Powder or capsules.",
+              "**Schisandra**: Liver support, mental performance, endurance. Tea or extract.",
+              "**Eleuthero (Siberian ginseng)**: Energy, immune function, endurance. Extract or tincture.",
+            ]},
+            { type: "h", text: "Where herbal tradition meets research" },
+            { type: "p", text: "Traditional use often predates scientific evidence by thousands of years. Some herbs (ashwagandha, rhodiola) now have human trials supporting traditional claims. Others remain understudied. Quality matters: use standardised extracts from reputable brands (third-party tested)." },
+            { type: "h", text: "Safety and interactions" },
+            { type: "list", items: [
+              "Generally safe for most people, but not all.",
+              "Ashwagandha: may increase thyroid hormone (caution in hyperthyroidism).",
+              "Rhodiola: may be stimulating (caution in anxiety, bipolar disorder).",
+              "Ginseng: may affect blood sugar, blood pressure (caution in diabetes, hypertension).",
+              "Pregnancy/breastfeeding: limited safety data — best to avoid.",
+            ]},
+            { type: "check", q: "Which adaptogen is best for reducing cortisol and anxiety?", options: ["Rhodiola", "Ashwagandha", "Ginseng", "Maca"], correct: 1, explain: "Ashwagandha has the strongest evidence for reducing cortisol and anxiety." },
+            { type: "callout", text: "Bottom line: **Adaptogens can help with stress, but they're not magic.** Prioritise sleep, nutrition, exercise, and stress management first. Use adaptogens as adjuncts." },
+          ],
+          quiz: [
+            { q: "What do adaptogens help the body do?", options: ["Build muscle", "Adapt to stress", "Lose weight", "Sleep more"], correct: 1 },
+            { q: "Which adaptogen is best for energy and mental performance?", options: ["Ashwagandha", "Rhodiola", "Holy basil", "Maca"], correct: 1 },
+            { q: "What is the active compound in ginseng?", options: ["Withanolides", "Ginsenosides", "Rosavins", "Salidroside"], correct: 1 },
+            { type: "truefalse", q: "Adaptogens are stimulants that provide immediate energy.", correct: false, explain: "No — adaptogens normalise function (homeostasis), they don't stimulate or sedate. Effects are gradual, not immediate." },
+          ],
+        },
+        {
+          id: "7.5",
+          title: "Fasting",
+          blocks: [
+            { type: "p", text: "Fasting — voluntarily abstaining from food for periods of time — has been practised for thousands of years (religious, spiritual, therapeutic). Recent research has renewed interest in its metabolic and cellular benefits." },
+            { type: "h", text: "What happens in the body when you fast" },
+            { type: "list", items: [
+              "**0–4 hours**: Postprandial (fed) state. Insulin high, glucose being used for energy.",
+              "**4–12 hours**: Post-absorptive state. Insulin drops, glycogen being broken down to glucose.",
+              "**12–24 hours**: Glycogen depleted, gluconeogenesis (making glucose from amino acids, glycerol), fat oxidation increases.",
+              "**24–48 hours**: Ketosis ramps up (fat → ketones for brain/heart), autophagy increases (cellular cleanup), growth hormone increases.",
+              "**48+ hours**: Deep ketosis, autophagy peaks, stem cell regeneration, immune system reset (animal studies).",
+            ]},
+            { type: "h", text: "Intermittent fasting (16:8, ADF) and the evidence" },
+            { type: "list", items: [
+              "**16:8 (time-restricted feeding)**: 16 hours fasting, 8-hour eating window. Evidence: improves insulin sensitivity, may aid weight loss, simple to follow.",
+              "**ADF (alternate-day fasting)**: Fast every other day (or 500–600 calories on 'fast' days). Evidence: effective for weight loss, may improve cardiovascular markers, harder to sustain.",
+              "**5:2 diet**: 5 normal days, 2 fast days (500–600 calories). Evidence: similar to ADF, more flexible.",
+              "**OMAD (one meal a day)**: 23 hours fasting, 1-hour eating window. Evidence: limited, may be effective for weight loss but risk of nutrient deficiencies, disordered eating.",
+            ]},
+            { type: "h", text: "Extended fasting and autophagy — hype vs research" },
+            { type: "list", items: [
+              "**Autophagy**: Cellular 'cleanup' process — damaged proteins, organelles are recycled. Increases during fasting (peaks ~48–72 hours in animals).",
+              "**Hype**: 'Autophagy cures all disease' — overstated. It's ONE mechanism among many.",
+              "**Research**: Animal studies show benefits for longevity, cancer prevention, neurodegeneration. Human data limited (mostly observational, small trials).",
+              "**Extended fasting (3–7+ days)**: Should be medically supervised. Risks: electrolyte imbalances, refeeding syndrome, muscle loss, nutrient deficiencies.",
+            ]},
+            { type: "h", text: "Who should NOT fast?" },
+            { type: "list", items: [
+              "Pregnant/breastfeeding women.",
+              "Underweight individuals (BMI <18.5).",
+              "History of disordered eating.",
+              "Type 1 diabetes (risk of ketoacidosis).",
+              "Adrenal fatigue, HPA axis dysfunction (may worsen).",
+              "Children/adolescents (growth needs consistent nutrition).",
+            ]},
+            { type: "h", text: "Practical considerations" },
+            { type: "p", text: "Start small (12:12, then 14:10, then 16:8). Stay hydrated (water, electrolytes). Break fasts gently (bone broth, small meal). Don't overeat post-fast (defeats the purpose). Listen to your body — fasting should feel good, not miserable." },
+            { type: "check", qtype: "truefalse", q: "Autophagy peaks at 12 hours of fasting.", correct: false, explain: "No — autophagy increases during fasting but peaks around 48–72 hours (based on animal studies). 12 hours is just the beginning." },
+            { type: "callout", text: "Bottom line: **Intermittent fasting (16:8) is safe and effective for most people.** Extended fasting should be medically supervised. Not for everyone — listen to your body." },
+          ],
+          quiz: [
+            { q: "What is autophagy?", options: ["Muscle growth", "Cellular cleanup", "Fat storage", "Glucose production"], correct: 1 },
+            { q: "What is 16:8 fasting?", options: ["16 days fasting, 8 days eating", "16 hours fasting, 8-hour eating window", "16 meals, 8 snacks", "16 calories, 8 grams protein"], correct: 1 },
+            { q: "When does ketosis typically begin?", options: ["4 hours", "12–24 hours", "48 hours", "1 week"], correct: 1 },
+            { type: "multi", q: "Who should NOT fast?", options: ["Pregnant women", "Healthy adults", "Underweight individuals", "History of disordered eating"], correct: [0, 2, 3], explain: "Pregnant women, underweight individuals, and those with a history of disordered eating should NOT fast. Healthy adults generally can." },
+          ],
+        },
+        {
+          id: "7.6",
+          title: "Food Quality Beyond the Label",
+          blocks: [
+            { type: "p", text: "Food quality isn't just about macros and micros — it's about how food is grown, processed, and prepared. These factors affect nutrient density, toxin exposure, and long-term health." },
+            { type: "h", text: "Organic vs conventional, what evidence shows" },
+            { type: "list", items: [
+              "**Pesticide residues**: Organic has significantly lower pesticide residues. Conventional produce often has multiple residues (EWG's 'Dirty Dozen' list).",
+              "**Nutrient density**: Some studies show organic has higher antioxidants, vitamin C, omega-3s (especially in dairy/meat). Differences are modest but real.",
+              "**Toxin exposure**: Organic reduces exposure to glyphosate (Roundup), neonicotinoids (bee-killing pesticides), and other synthetic chemicals.",
+              "**Environmental impact**: Organic farming is better for soil health, biodiversity, water quality. But lower yields — trade-off.",
+              "**Cost**: Organic is more expensive. Prioritise: 'Dirty Dozen' (buy organic), 'Clean Fifteen' (conventional OK).",
+            ]},
+            { type: "h", text: "Soil health and nutrient density" },
+            { type: "list", items: [
+              "**Soil depletion**: Modern farming has depleted soil minerals (especially magnesium, zinc, selenium). Crops grown in depleted soil are less nutrient-dense.",
+              "**Regenerative agriculture**: Practices that rebuild soil (cover cropping, no-till, composting, rotational grazing). Produces more nutrient-dense food.",
+              "**Local, seasonal**: Fresher food (less time in transit/storage) retains more nutrients. Seasonal eating aligns with natural cycles.",
+              "**Heirloom vs hybrid**: Heirloom varieties often more nutrient-dense but lower yielding. Hybrids bred for yield, shelf-life, not nutrition.",
+            ]},
+            { type: "h", text: "What actually defines 'ultra-processed'" },
+            { type: "list", items: [
+              "**NOVA classification**: Group 4 (ultra-processed) = industrial formulations with 5+ ingredients, including additives, preservatives, artificial flavours/colours, high-fructose corn syrup, hydrogenated oils.",
+              "**Examples**: Soft drinks, packaged snacks, instant noodles, frozen meals, most breakfast cereals, mass-produced bread.",
+              "**Health impacts**: Linked to obesity, type 2 diabetes, cardiovascular disease, depression, all-cause mortality (observational studies).",
+              "**Mechanisms**: Hyper-palatable (engineered to override satiety), low nutrient density, disrupt gut microbiome, promote inflammation.",
+              "**Not all processed food is equal**: Minimally processed (frozen vegetables, canned beans, plain yogurt) is fine. ULTRA-processed is the problem.",
+            ]},
+            { type: "h", text: "Practical food quality tips" },
+            { type: "list", items: [
+              "Prioritise organic for 'Dirty Dozen' (strawberries, spinach, apples, etc.).",
+              "Buy local, seasonal produce when possible.",
+              "Choose grass-fed, pasture-raised animal products (better fatty acid profiles).",
+              "Avoid ultra-processed foods (check ingredient lists — if it has 5+ ingredients, especially unpronounceable ones, put it back).",
+              "Support regenerative agriculture (farmers markets, CSAs, brands that prioritise soil health).",
+            ]},
+            { type: "check", q: "What does NOVA Group 4 refer to?", options: ["Organic food", "Ultra-processed food", "Whole food", "Fermented food"], correct: 1, explain: "NOVA Group 4 is ultra-processed food — industrial formulations with 5+ ingredients, including additives and preservatives." },
+            { type: "callout", text: "Bottom line: **Food quality matters as much as quantity.** Prioritise organic (for Dirty Dozen), local, seasonal, regenerative, and avoid ultra-processed." },
+          ],
+          quiz: [
+            { q: "What does organic reduce?", options: ["Nutrient density", "Pesticide residues", "Cost", "Yield"], correct: 1 },
+            { q: "What is NOVA Group 4?", options: ["Organic", "Ultra-processed", "Whole food", "Fermented"], correct: 1 },
+            { q: "What improves soil health?", options: ["Monoculture", "Regenerative agriculture", "Pesticides", "Tilling"], correct: 1 },
+            { type: "multi", q: "Which are characteristics of ultra-processed food?", options: ["5+ ingredients", "Artificial additives", "Whole ingredients", "High nutrient density"], correct: [0, 1], explain: "Ultra-processed foods have 5+ ingredients and artificial additives. They are NOT whole or nutrient-dense." },
+          ],
+        },
+        {
+          id: "7.7",
+          title: "Module 7 Review: The Alternative & Naturopathic Lens",
+          blocks: [
+            { type: "p", text: "Reviewing naturopathic nutrition's core ideas, the gut microbiome, elimination diets, adaptogens, fasting, and food quality beyond the label." },
+          ],
+          quiz: [
+            { q: "What does naturopathic nutrition emphasise over isolated supplements?", options: ["Calorie counting", "Whole foods", "Population averages", "Macro tracking"], correct: 1 },
+            { q: "Roughly what percentage of the body's serotonin is produced in the gut?", options: ["10%", "50%", "90%", "100%"], correct: 2 },
+            { q: "What is the actual gold-standard method for identifying a food sensitivity?", options: ["An IgG blood test", "A skin prick test", "An elimination diet with systematic reintroduction", "A blood glucose test"], correct: 2 },
+            { q: "Which adaptogen has the strongest evidence for reducing cortisol and anxiety?", options: ["Rhodiola", "Ashwagandha", "Ginseng", "Maca"], correct: 1 },
+            { type: "truefalse", q: "Autophagy during fasting peaks at around 12 hours.", correct: false, explain: "Autophagy increases during fasting but peaks around 48-72 hours, based on animal studies — 12 hours is just the beginning." },
+            { q: "What does NOVA Group 4 refer to?", options: ["Organic food", "Ultra-processed food", "Whole food", "Fermented food"], correct: 1 },
+            { type: "multi", q: "Which groups should NOT fast, per Lesson 7.5?", options: ["Pregnant/breastfeeding people", "Healthy sedentary adults", "Underweight individuals", "People with a history of disordered eating"], correct: [0, 2, 3], explain: "Healthy sedentary adults are generally fine to fast — the others carry real risks." },
+          ],
+        },
+      ],
+    },
+    {
+      id: "m8",
+      number: 8,
+      section: "Beyond the Basics",
+      title: "Applying It",
+      description: "Reading nutrition science critically, debunking myths, everyday application, and capstone.",
+      lessons: [
+        {
+          id: "8.1",
+          title: "Reading Nutrition Science Critically",
+          blocks: [
+            { type: "p", text: "Nutrition science is notoriously difficult to interpret — conflicting headlines, industry influence, and methodological limitations. Here's how to read studies critically." },
+            { type: "h", text: "How to read a study (and its limits)" },
+            { type: "list", items: [
+              "**Study type matters**: RCTs > cohort studies > case-control > cross-sectional > animal/cell studies. Don't extrapolate from mice to humans.",
+              "**Sample size**: Small studies (<50 participants) are underpowered — results may be due to chance.",
+              "**Duration**: Short-term studies (weeks) don't predict long-term outcomes (years).",
+              "**Funding/source**: Industry-funded studies are more likely to favour the sponsor's product. Check for conflicts of interest.",
+              "**Endpoints**: Hard endpoints (mortality, disease incidence) > surrogate markers (cholesterol, blood pressure).",
+            ]},
+            { type: "h", text: "Red flags, mainstream and alternative alike" },
+            { type: "list", items: [
+              "**Mainstream red flags**: Observational studies presented as causation, surrogate endpoints, industry funding, small sample sizes, short duration, extrapolating from animals.",
+              "**Alternative red flags**: Anecdotal evidence, testimonials, 'ancient wisdom' without data, conspiracy theories ('Big Pharma is hiding the cure'), one-size-fits-all protocols, expensive supplement protocols from the person selling them.",
+            ]},
+            { type: "h", text: "Why nutrition science is so contested" },
+            { type: "list", items: [
+              "**Complexity**: Food is complex (thousands of compounds), not single molecules like drugs.",
+              "**Individual variation**: Genetics, microbiome, lifestyle all affect responses to diet.",
+              "**Long-term studies are hard**: Can't randomise people to diets for decades (ethics, compliance, cost).",
+              "**Industry influence**: Food, supplement, and agriculture industries fund research and lobby guidelines.",
+              "**Ideology**: People have strong beliefs about food (ethical, cultural, religious) — hard to be objective.",
+            ]},
+            { type: "h", text: "Practical critical appraisal" },
+            { type: "list", items: [
+              "Ask: What type of study is this? (RCT, observational, animal, cell)",
+              "Ask: How many participants? How long was it?",
+              "Ask: Who funded it? Any conflicts of interest?",
+              "Ask: What were the endpoints? (hard vs surrogate)",
+              "Ask: Does this apply to ME? (population, dose, duration)",
+              "Look for systematic reviews/meta-analyses (higher quality than single studies).",
+            ]},
+            { type: "check", qtype: "truefalse", q: "Observational studies can prove causation.", correct: false, explain: "No — observational studies show CORRELATION, not causation. Only RCTs can suggest causation (and even then, with limitations)." },
+            { type: "callout", text: "Golden rule: **One study doesn't prove anything.** Look for consistency across multiple studies, especially systematic reviews and meta-analyses." },
+          ],
+          quiz: [
+            { q: "Which study type is highest quality?", options: ["Case report", "Observational", "RCT", "Animal study"], correct: 2 },
+            { q: "What is a surrogate endpoint?", options: ["Mortality", "Disease incidence", "Cholesterol level", "Quality of life"], correct: 2 },
+            { q: "What is a red flag in nutrition research?", options: ["Large sample size", "Industry funding", "Long duration", "RCT design"], correct: 1 },
+            { type: "truefalse", q: "Animal studies can be directly extrapolated to humans.", correct: false, explain: "No — animal studies are preliminary. Results often don't translate to humans due to biological differences." },
+          ],
+        },
+        {
+          id: "8.2",
+          title: "Common Myths & Misconceptions",
+          blocks: [
+            { type: "p", text: "Nutrition is rife with myths — from both mainstream and alternative camps. Let's debunk some of the most common ones." },
+            { type: "h", text: "Mainstream myths debunked" },
+            { type: "list", items: [
+              "**Myth**: 'Saturated fat causes heart disease.' **Reality**: Recent meta-analyses show weak or no direct link. Context (overall diet, food quality) matters more.",
+              "**Myth**: 'You need to eat every 2–3 hours to stoke your metabolism.' **Reality**: Meal frequency has minimal effect on metabolism. Total daily intake matters most.",
+              "**Myth**: 'Breakfast is the most important meal.' **Reality**: No evidence for this in adults. Some people do better skipping breakfast (intermittent fasting).",
+              "**Myth**: 'Eggs raise cholesterol and cause heart disease.' **Reality**: Dietary cholesterol has minimal effect on blood cholesterol for most people. Eggs are nutrient-dense and safe for most.",
+              "**Myth**: 'You need carbs to fuel workouts.' **Reality**: Fat-adapted athletes can perform well on low-carb diets. Carbs help, but aren't essential.",
+            ]},
+            { type: "h", text: "Alternative-nutrition myths debunked" },
+            { type: "list", items: [
+              "**Myth**: 'Alkaline diets cure cancer.' **Reality**: Your body tightly regulates blood pH (7.35–7.45). Diet can't change it. Alkaline diets may be healthy, but not because of pH.",
+              "**Myth**: 'Detox teas/cleanses remove toxins.' **Reality**: Your liver and kidneys detoxify you. 'Detox' products are marketing hype (often laxatives).",
+              "**Myth**: 'Gluten is toxic to everyone.' **Reality**: Gluten is harmful for celiac disease (~1% of population) and non-celiac gluten sensitivity (~6%). Most people tolerate it fine.",
+              "**Myth**: 'Raw food is always better.' **Reality**: Some nutrients are better absorbed cooked (lycopene in tomatoes, beta-carotene in carrots). Cooking also kills pathogens.",
+              "**Myth**: 'Supplements can replace a bad diet.' **Reality**: They can't. Food matrix, synergy, and fibre can't be replicated in a pill.",
+            ]},
+            { type: "h", text: "Fringe-sounding claims that actually hold up" },
+            { type: "list", items: [
+              "**Claim**: 'Seed oils are problematic.' **Evidence**: High omega-6 intake promotes inflammation when ratio is imbalanced. Seed oils oxidise easily when heated. Evidence is mixed but concerning.",
+              "**Claim**: 'Gut health affects everything.' **Evidence**: Strong. Microbiome influences immunity, mood, metabolism, chronic disease.",
+              "**Claim**: 'Ultra-processed food is harmful.' **Evidence**: Strong. Linked to obesity, diabetes, cardiovascular disease, depression, mortality.",
+              "**Claim**: 'Fasting has benefits.' **Evidence**: Strong for intermittent fasting (insulin sensitivity, weight loss). Extended fasting evidence is emerging but promising (autophagy, stem cell regeneration).",
+            ]},
+            { type: "check", q: "Does dietary cholesterol significantly raise blood cholesterol for most people?", options: ["Yes", "No", "Only in women", "Only in men"], correct: 1, explain: "For most people, dietary cholesterol (e.g. from eggs) has minimal effect on blood cholesterol. Genetics and overall diet matter more." },
+            { type: "callout", text: "Critical thinking: **Be sceptical of absolute claims** ('always', 'never', 'cures all'). Nutrition is nuanced — context matters." },
+          ],
+          quiz: [
+            { q: "Does saturated fat directly cause heart disease?", options: ["Yes, always", "No, context matters", "Only in women", "Only in men"], correct: 1 },
+            { q: "Can alkaline diets change blood pH?", options: ["Yes", "No", "Only in cancer", "Only in athletes"], correct: 1 },
+            { q: "Are detox teas effective?", options: ["Yes", "No", "Only for weight loss", "Only for energy"], correct: 1 },
+            { type: "multi", q: "Which claims have evidence?", options: ["Gut health affects everything", "Alkaline diets cure cancer", "Ultra-processed food is harmful", "Detox teas remove toxins"], correct: [0, 2], explain: "Gut health and ultra-processed food claims have strong evidence. Alkaline diets and detox teas do not." },
+          ],
+        },
+        {
+          id: "8.3",
+          title: "Everyday Application",
+          blocks: [
+            { type: "p", text: "Knowing nutrition science is one thing — applying it consistently in real life is another. Here's how to make it stick." },
+            { type: "h", text: "Meal planning & prep that actually sticks" },
+            { type: "list", items: [
+              "**Keep it simple**: 3–4 go-to breakfasts, lunches, dinners you enjoy and can make easily. Rotate them.",
+              "**Batch cook**: Cook large batches on weekends (grains, proteins, roasted vegetables) — assemble meals during the week.",
+              "**Prep ingredients, not meals**: Wash/chop vegetables, cook grains/proteins — mix and match during the week.",
+              "**Use templates**: Bowl formula (grain + protein + vegetables + sauce), salad formula (greens + protein + toppings + dressing).",
+              "**Don't overcomplicate**: You don't need 20 different recipes. Simple, repeatable meals are sustainable.",
+            ]},
+            { type: "h", text: "Eating out and social situations without derailing" },
+            { type: "list", items: [
+              "**Scan menus ahead**: Most restaurants have menus online — decide before you go (when you're not hungry/pressured).",
+              "**Prioritise protein and vegetables**: Order grilled/baked protein + double vegetables. Skip or share sides (fries, bread).",
+              "**Sauces on the side**: Control how much you use (many are sugar/fat bombs).",
+              "**Don't arrive starving**: Have a small protein-rich snack before going out (prevents overordering/overeating).",
+              "**80/20 rule**: Eat well 80% of the time, enjoy social meals 20%. Perfection is unsustainable.",
+            ]},
+            { type: "h", text: "Mindful eating and your relationship with food" },
+            { type: "list", items: [
+              "**Slow down**: Eat without distractions (no phone, TV). Chew thoroughly. Notice flavours, textures.",
+              "**Check in**: Are you actually hungry? Or eating out of boredom, stress, habit?",
+              "**Stop at 80% full**: It takes 20 minutes for satiety signals to reach your brain.",
+             "**No moralising food**: Food isn't 'good' or 'bad'. It's nourishment. Guilt and shame don't help.",
+              "**Intuitive eating**: Learn to trust your body's hunger/fullness cues (after healing from diet culture).",
+            ]},
+            { type: "h", text: "Healthy eating on a budget" },
+            { type: "list", items: [
+              "**Buy in bulk**: Grains, legumes, nuts, seeds are cheaper in bulk.",
+              "**Frozen/canned**: Frozen vegetables and fruits are just as nutritious (often more, since frozen at peak ripeness). Canned beans, tomatoes, fish are cheap and convenient.",
+              "**Seasonal produce**: In-season fruits/vegetables are cheaper and more nutrient-dense.",
+              "**Plant proteins**: Beans, lentils, tofu are cheaper than meat. Use meat as a flavouring, not the main event.",
+              "**Cook at home**: Eating out is expensive. Meal prep saves money AND time.",
+            ]},
+            { type: "check", qtype: "truefalse", q: "You need to eat perfectly 100% of the time to be healthy.", correct: false, explain: "No — the 80/20 rule (eat well 80% of the time, enjoy life 20%) is more sustainable and effective long-term." },
+            { type: "callout", text: "Bottom line: **Consistency > perfection.** Simple, repeatable habits beat complex, unsustainable protocols every time." },
+          ],
+          quiz: [
+            { q: "What is the 80/20 rule?", options: ["80% protein, 20% carbs", "Eat well 80% of the time, enjoy 20%", "80% fat, 20% protein", "80% raw, 20% cooked"], correct: 1 },
+            { q: "What is a good meal prep strategy?", options: ["Cook 20 different recipes", "Batch cook staples", "Only eat out", "Skip meals"], correct: 1 },
+            { q: "What is a budget-friendly protein?", options: ["Steak", "Salmon", "Lentils", "Protein powder"], correct: 2 },
+            { type: "multi", q: "Which are mindful eating tips?", options: ["Eat without distractions", "Eat quickly", "Check hunger cues", "Stop at 80% full"], correct: [0, 2, 3], explain: "Eat without distractions, check hunger cues, and stop at 80% full are mindful eating tips. Eating quickly is NOT." },
+          ],
+        },
+        {
+          id: "8.4",
+          title: "Capstone — Your Personal Nutrition Framework",
+          blocks: [
+            { type: "p", text: "This is where you bring it all together. No more following generic protocols — you'll design a nutrition approach that fits YOUR life, goals, and preferences." },
+            { type: "h", text: "Auditing your current diet" },
+            { type: "list", items: [
+              "**Track for 3–7 days**: Use an app (Cronometer, MyFitnessPal) or journal. Record everything (food, drink, supplements).",
+              "**Analyse macros**: Are you hitting protein targets (1.6–2.2 g/kg)? Are carbs/fats in reasonable ranges?",
+              "**Analyse micros**: Are you getting enough vitamins/minerals? Any consistent gaps?",
+              "**Food quality**: How much is whole food vs ultra-processed? Organic? Local?",
+              "**Patterns**: When do you overeat? Under-eat? Emotional eating? Mindless snacking?",
+              "**Symptoms**: Digestive issues, energy crashes, skin problems, mood swings, sleep issues — note correlations with food.",
+            ]},
+            { type: "h", text: "Weighing evidence vs personal experience" },
+            { type: "list", items: [
+              "**Evidence-based**: Start with what the science says (e.g. protein targets, whole foods, limit ultra-processed).",
+              "**Personal data**: Does this work for YOU? Energy, digestion, mood, performance, body composition.",
+              "**Adjust**: If evidence says 'X is good' but you feel terrible on X, adjust. Bio-individuality matters.",
+              "**N=1 experiments**: Try something for 2–4 weeks, track symptoms, adjust. Example: dairy-free for 3 weeks — how do you feel?",
+              "**Avoid extremes**: Don't swing from one extreme to another (e.g. vegan to carnivore). Find YOUR middle ground.",
+            ]},
+            { type: "h", text: "Designing a routine that fits your actual life" },
+            { type: "list", items: [
+              "**Goals**: What do you want? (fat loss, muscle gain, energy, gut health, longevity, performance).",
+              "**Non-negotiables**: What will you ALWAYS do? (e.g. protein at every meal, vegetables with lunch/dinner, no ultra-processed).",
+              "**Flexibility**: What will you be flexible on? (meal timing, carb intake, treats).",
+             "**Schedule**: When do you eat? (3 meals, 2 meals + snack, intermittent fasting). What fits your life?",
+              "**Prep**: How will you make it easy? (meal prep, batch cook, keep healthy snacks on hand).",
+              "**Social**: How will you handle eating out, parties, holidays? (80/20 rule, prioritise protein/vegetables).",
+            ]},
+            { type: "h", text: "Iterating over time" },
+            { type: "list", items: [
+              "**Review monthly**: How's it going? Energy, digestion, mood, body composition, performance.",
+              "**Adjust as needed**: Life changes (stress, travel, injury, goals). Your nutrition should too.",
+              "**Avoid perfectionism**: Slip-ups happen. Get back on track at the NEXT meal — don't wait for Monday.",
+              "**Keep learning**: Nutrition science evolves. Stay curious, open-minded, but critical.",
+              "**Listen to your body**: It's your best biofeedback tool. If something doesn't feel right, adjust.",
+            ]},
+            { type: "h", text: "Your framework template" },
+            { type: "list", items: [
+              "**Protein**: X g/day (based on weight, goals). Sources: ___.",
+              "**Carbs**: X g/day (based on activity, preference). Sources: ___.",
+              "**Fats**: Remainder of calories. Sources: ___.",
+              "**Vegetables**: X servings/day. Focus on: ___.",
+              "**Meal timing**: X meals/day. Eating window: ___.",
+              "**Supplements**: ___ (only if needed, evidence-based).",
+              "**Non-negotiables**: ___.",
+              "**Flexible on**: ___.",
+              "**Review**: Monthly check-in on: ___.",
+            ]},
+            { type: "check", q: "What should you track in your diet audit?", options: ["Only calories", "Only protein", "Food, symptoms, patterns", "Only weight"], correct: 2, explain: "A comprehensive audit tracks food, symptoms (digestion, energy, mood), and patterns (when you over/under-eat)." },
+            { type: "callout", text: "Final takeaway: **Your nutrition is YOURS.** Evidence-based, but personalised. Consistent, but flexible. Sustainable for LIFE, not just 6 weeks." },
+          ],
+          quiz: [
+            { q: "What should you track in a diet audit?", options: ["Only calories", "Only weight", "Food, symptoms, patterns", "Only protein"], correct: 2 },
+            { q: "How often should you review your nutrition plan?", options: ["Daily", "Weekly", "Monthly", "Yearly"], correct: 2 },
+            { q: "What is the 80/20 rule for?", options: ["Macros", "Consistency vs flexibility", "Protein intake", "Meal timing"], correct: 1 },
+            { type: "truefalse", q: "You should adjust your nutrition based on personal experience, not just evidence.", correct: true, explain: "Yes — evidence is the starting point, but bio-individuality means you may need to adjust based on how YOU feel and respond." },
+          ],
+        },
+        {
+          id: "8.5",
+          title: "Final Review: The Whole Course",
+          blocks: [
+            { type: "p", text: "One question pulled from each module — a genuinely interleaved final check across everything from Foundations through to reading nutrition science critically, rather than a repeat of any single module." },
+          ],
+          quiz: [
+            { q: "(Module 1) What does the RDA for a nutrient actually represent?", options: ["Optimal intake", "The minimum to prevent deficiency"], correct: 1 },
+            { q: "(Module 2) Which amino acid is the primary trigger for muscle protein synthesis?", options: ["Lysine", "Leucine", "Methionine", "Tryptophan"], correct: 1 },
+            { q: "(Module 3) Which fat type is solid at room temperature?", options: ["Monounsaturated", "Polyunsaturated", "Saturated", "Omega-3"], correct: 2 },
+            { q: "(Module 4) Which vitamins can accumulate to toxic levels if over-supplemented?", options: ["Water-soluble", "Fat-soluble", "Both equally", "Neither"], correct: 1 },
+            { q: "(Module 5) What urine colour generally indicates good hydration?", options: ["Clear", "Pale yellow", "Dark yellow", "Brown"], correct: 1 },
+            { q: "(Module 6) What is the standard, well-supported daily maintenance dose of creatine?", options: ["1 g", "3-5 g", "10 g", "20 g"], correct: 1 },
+            { q: "(Module 7) What is the actual gold-standard method for identifying a food sensitivity?", options: ["An IgG blood test", "An elimination diet with reintroduction", "A skin prick test", "Guessing"], correct: 1 },
+            { type: "truefalse", q: "(Module 8) One single study is generally enough to overturn an existing scientific consensus.", correct: false, explain: "A lone study sits lower on the evidence hierarchy than a systematic review or meta-analysis of many studies." },
+            { type: "type", q: "(Module 1) Fill in the blank: RDAs are minimums to prevent ______, not optimal targets for health or performance.", accepted: ["deficiency"], explain: "This is the single most-repeated idea across this course's Foundations module." },
+          ],
+        },
+      ],
+    },
+  ],
 };
-function CourseIcon({ name, ...props }) {
-  const Icon = COURSE_ICONS[name] || BookOpen; // falls back to BookOpen if a course forgets to set one
-  return <Icon {...props} />;
-}
-import { COURSES } from "./courses/index.js";
-import { loadProgress, saveProgress } from "./storage.js";
-import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
-
-/* ============================================================
-   SPACED REPETITION (Leitner-style "daily review" system)
-   ============================================================
-   Each completed lesson gets a review entry: { box, lastReviewed, nextDue }.
-   Box 1-5, each with a growing gap — get the review question right and the
-   lesson moves up a box (a longer wait next time); get it wrong and it
-   drops back to Box 1 (due again tomorrow). A lesson only ENTERS this
-   system once its whole module is complete (see completeLesson below),
-   not the instant that one lesson finishes.
-   This lives entirely in the existing progress object storage.js already
-   saves to Firestore — storage.js itself needed zero changes, since
-   loadProgress/saveProgress just persist whatever shape they're given. */
-const REVIEW_BOX_DAYS = [1, 3, 7, 14, 30]; // index 0 = Box 1
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-}
-function addDays(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-function newReviewEntry() {
-  const today = todayStr();
-  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]) };
-}
-function advanceReviewEntry(entry, wasCorrect) {
-  const today = todayStr();
-  if (wasCorrect) {
-    const nextBox = Math.min((entry?.box || 1) + 1, REVIEW_BOX_DAYS.length);
-    return { box: nextBox, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[nextBox - 1]) };
-  }
-  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]) };
-}
-// Every due lesson contributes ONE question to the single combined daily
-// review quiz. Which question is picked shifts by the day (not random on
-// every render), so revisiting a lesson tomorrow surfaces a different
-// question from its existing quiz instead of the exact same one each time.
-function pickReviewQuestion(lesson) {
-  const quiz = lesson.quiz || [];
-  if (quiz.length === 0) return null;
-  const dayIndex = Math.floor(Date.now() / 86400000);
-  return quiz[(dayIndex + lesson.id.length) % quiz.length];
-}
-function getDueReviews(courses, progressMap) {
-  const today = todayStr();
-  const due = [];
-  courses.forEach((course) => {
-    const review = progressMap[course.id]?.review || {};
-    course.modules.forEach((module) => {
-      module.lessons.forEach((lesson) => {
-        const entry = review[lesson.id];
-        if (entry && entry.nextDue <= today) due.push({ course, module, lesson });
-      });
-    });
-  });
-  return due;
-}
-// Runs once per load (see the progress-loading useEffect below). Modules
-// completed BEFORE the review system existed never had a chance to trigger
-// the seeding step inside completeLesson, so without this they'd simply
-// never enter the review queue at all. This scans every already-complete
-// module and adds any missing review entries, then that gets saved back
-// so it's a real one-time fix, not a re-check on every load forever.
-function backfillReviewEntries(course, progress) {
-  const completedLessons = progress.completedLessons || [];
-  let review = progress.review || {};
-  let changed = false;
-  course.modules.forEach((module) => {
-    if (module.lessons.length > 0 && module.lessons.every((l) => completedLessons.includes(l.id))) {
-      module.lessons.forEach((l) => {
-        if (!review[l.id]) {
-          if (!changed) review = { ...review };
-          review[l.id] = newReviewEntry();
-          changed = true;
-        }
-      });
-    }
-  });
-  return changed ? { ...progress, review } : progress;
-}
-
-// Picks readable text (white vs. navy) based on the background colour's brightness —
-// used anywhere a dynamic/vibrant background hosts text or an icon.
-function textOn(hex) {
-  const c = hex.replace("#", "");
-  const r = parseInt(c.substring(0, 2), 16), g = parseInt(c.substring(2, 4), 16), b = parseInt(c.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.62 ? "#17213A" : "#FFFFFF";
-}
-
-// Darkens a hex colour by a percentage — used for the chunky "3D" bottom-shadow on buttons.
-function darken(hex, amount = 0.18) {
-  const c = hex.replace("#", "");
-  const r = Math.max(0, Math.round(parseInt(c.substring(0, 2), 16) * (1 - amount)));
-  const g = Math.max(0, Math.round(parseInt(c.substring(2, 4), 16) * (1 - amount)));
-  const b = Math.max(0, Math.round(parseInt(c.substring(4, 6), 16) * (1 - amount)));
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
-const FONT_DISPLAY = '"Baloo 2", "Nunito", ui-rounded, "Segoe UI", sans-serif';
-const FONT_BODY = '"Nunito", ui-rounded, "Segoe UI", sans-serif';
-
-const GLOBAL_STYLE = `
-  .lp-btn { transition: transform 0.12s ease, box-shadow 0.12s ease; }
-  .lp-btn:hover:not(:disabled) { transform: translateY(-2px); }
-  .lp-btn:active:not(:disabled) { transform: translateY(2px) !important; box-shadow: 0 1px 0 rgba(0,0,0,0.15) !important; }
-  .lp-node:hover:not(:disabled) { transform: scale(1.08) !important; }
-  .lp-node.current { animation: lp-pulse 1.8s ease-in-out infinite; }
-  .lp-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(23,33,58,0.08); }
-  .lp-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
-  .lp-opt:hover:not(:disabled) { border-color: #C7C4B9; }
-  @keyframes lp-pulse { 0%, 100% { box-shadow: 0 4px 0 rgba(0,0,0,0.15), 0 0 0 0 rgba(46,127,209,0.35); } 50% { box-shadow: 0 4px 0 rgba(0,0,0,0.15), 0 0 0 10px rgba(46,127,209,0); } }
-  @keyframes lp-pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-  @keyframes lp-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-  .lp-pop { animation: lp-pop 0.22s ease; }
-  .lp-float { animation: lp-float 4s ease-in-out infinite; }
-
-  .lp-shell-wide { max-width: 640px; margin: 0 auto; padding: 28px 20px 70px; width: 100%; }
-  .lp-shell-narrow { max-width: 640px; margin: 0 auto; padding: 20px 20px 80px; width: 100%; }
-  @media (min-width: 860px) {
-    .lp-shell-wide { max-width: 900px; padding: 44px 36px 90px; }
-    .lp-shell-narrow { max-width: 720px; padding: 32px 24px 90px; }
-  }
-  @media (min-width: 1200px) {
-    .lp-shell-wide { max-width: 1040px; }
-    .lp-shell-narrow { max-width: 760px; }
-  }
-  /* Capped independently of the shell so a 1–2 item grid never balloons
-     into oversized cards on a wide laptop screen — extra room becomes
-     side margin instead, which is what makes it feel intentional rather
-     than stretched. */
-  .lp-grid { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 780px; margin: 0 auto; }
-  @media (min-width: 860px) {
-    .lp-grid { grid-template-columns: 1fr 1fr; gap: 20px; }
-  }
-`;
-
-/* ============================================================
-   TEXT RENDERING — tiny **bold** parser so content data can stay
-   plain strings instead of JSX.
-   ============================================================ */
-
-function Rich({ text }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return (
-    <>
-      {parts.map((part, i) =>
-        part.startsWith("**") && part.endsWith("**") ? (
-          <strong key={i} style={{ fontWeight: 800 }}>{part.slice(2, -2)}</strong>
-        ) : (
-          <React.Fragment key={i}>{part}</React.Fragment>
-        )
-      )}
-    </>
-  );
-}
-
-function Block({ block, accent, ink }) {
-  if (block.type === "h") {
-    return <h3 style={{ fontSize: 19, fontWeight: 800, color: ink, margin: "28px 0 10px", fontFamily: FONT_DISPLAY }}>{block.text}</h3>;
-  }
-  if (block.type === "p") {
-    return <p style={{ fontSize: 16, lineHeight: 1.7, color: "#2E3646", margin: "0 0 16px" }}><Rich text={block.text} /></p>;
-  }
-  if (block.type === "list") {
-    return (
-      <ul style={{ margin: "0 0 16px", paddingLeft: 20 }}>
-        {block.items.map((it, i) => (
-          <li key={i} style={{ fontSize: 16, lineHeight: 1.7, color: "#2E3646", marginBottom: 8 }}><Rich text={it} /></li>
-        ))}
-      </ul>
-    );
-  }
-  if (block.type === "callout") {
-    return (
-      <div style={{ background: "#FFF7E0", borderLeft: `4px solid ${accent}`, padding: "14px 16px", borderRadius: 10, margin: "8px 0 20px" }}>
-        <p style={{ fontSize: 15, lineHeight: 1.6, color: "#3A3220", margin: 0 }}><Rich text={block.text} /></p>
-      </div>
-    );
-  }
-  return null;
-}
-
-/* ============================================================
-   TERM FLASHCARD — tap to flip
-   ============================================================ */
-
-function TermCard({ term, definition, accent, ink }) {
-  const [flipped, setFlipped] = useState(false);
-  return (
-    <button
-      onClick={() => setFlipped((f) => !f)}
-      className="lp-btn"
-      style={{
-        display: "block", width: "100%", textAlign: "left", cursor: "pointer", margin: "0 0 12px",
-        background: flipped ? "#FFF7E0" : "#F6F7FB", border: `2px solid ${flipped ? accent : "#EAEAF2"}`,
-        borderRadius: 14, padding: "14px 16px",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ fontSize: 14, fontWeight: 800, color: ink, margin: 0, textTransform: flipped ? "none" : "uppercase", letterSpacing: flipped ? 0 : 0.3 }}>
-          {flipped ? "Definition" : term}
-        </p>
-        <RotateCw size={14} color="#B0AEC4" />
-      </div>
-      {flipped && <p style={{ fontSize: 14.5, lineHeight: 1.6, color: "#3A3220", margin: "8px 0 0" }}>{definition}</p>}
-      {!flipped && <p style={{ fontSize: 12, color: "#ADAAC0", margin: "6px 0 0" }}>Tap to reveal definition</p>}
-    </button>
-  );
-}
-
-/* ============================================================
-   DIAGRAMS — small built-in SVGs, referenced by "kind"
-   ============================================================ */
-
-function Diagram({ kind, accent, ink }) {
-  const Registered = DIAGRAM_REGISTRY[kind];
-  if (Registered) return <Registered accent={accent} ink={ink} />;
-  if (kind === "hypnogram") {
-    const points = "0,20 20,20 40,90 60,90 80,140 110,140 130,90 150,60 170,20 200,20 220,90 240,120 270,80 290,40 310,20 340,20 360,80 380,60 410,10 440,10";
-    return (
-      <div style={{ margin: "12px 0 22px", background: "#F6F7FB", borderRadius: 16, padding: "16px 12px" }}>
-        <svg viewBox="0 0 460 170" style={{ width: "100%", height: "auto" }}>
-          <text x="0" y="14" fontSize="9" fill="#9C99A6">Awake</text>
-          <text x="0" y="34" fontSize="9" fill="#9C99A6">REM</text>
-          <text x="0" y="64" fontSize="9" fill="#9C99A6">N1</text>
-          <text x="0" y="94" fontSize="9" fill="#9C99A6">N2</text>
-          <text x="0" y="144" fontSize="9" fill="#9C99A6">N3</text>
-          <polyline points={points} fill="none" stroke={accent} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-          <text x="230" y="165" fontSize="10" fill="#B0AEC4" textAnchor="middle">Time across the night →</text>
-        </svg>
-        <p style={{ fontSize: 12, color: "#9C99A6", margin: "4px 0 0", textAlign: "center" }}>Note the deep dips (N3) early, and how the line lifts closer to REM/light sleep later on.</p>
-      </div>
-    );
-  }
-  if (kind === "cycle") {
-    return (
-      <div style={{ margin: "12px 0 22px", background: "#F6F7FB", borderRadius: 16, padding: "16px 12px" }}>
-        <svg viewBox="0 0 460 130" style={{ width: "100%", height: "auto" }}>
-          {[0, 1, 2, 3].map((i) => (
-            <g key={i}>
-              <path d={`M ${i * 115 + 10} 30 Q ${i * 115 + 40} 110 ${i * 115 + 65} 100 T ${i * 115 + 115} 30`} fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" />
-              <text x={i * 115 + 55} y="122" fontSize="9" fill="#9C99A6" textAnchor="middle">~90 min</text>
-            </g>
-          ))}
-        </svg>
-        <p style={{ fontSize: 12, color: "#9C99A6", margin: "4px 0 0", textAlign: "center" }}>Four repeating ~90-minute cycles across a night — each dip is a full pass through NREM into REM.</p>
-      </div>
-    );
-  }
-  return null;
-}
-
-/* ============================================================
-   QUESTION TYPES
-   Every quiz/check item can set `type` to change how it's answered:
-     (none) / "mcq"  — single choice, tap one option           { q, options, correct, explain? }
-     "truefalse"     — tap True or False                       { q, correct: true|false, explain? }
-     "multi"         — select ALL that apply, then Check        { q, options, correct: [i, j], explain? }
-     "type"          — type the answer in a text box            { q, accepted: ["word", "alt word"], explain? }
-   ============================================================ */
-
-function optionVisual(state) {
-  // state: "idle" | "selected" | "correct" | "incorrect" | "muted"
-  if (state === "correct") return { border: "#1C9450", bg: "#EAFAF0", color: "#166A3C" };
-  if (state === "incorrect") return { border: "#D8465F", bg: "#FCEAEC", color: "#A23347" };
-  if (state === "selected") return { border: "#2E7FD1", bg: "#EEF6FD", color: "#17213A" };
-  if (state === "muted") return { border: "#EAEAF2", bg: "#fff", color: "#B0AEC4" };
-  return { border: "#EAEAF2", bg: "#fff", color: "#2E3646" };
-}
-
-function OptionButton({ label, state, disabled, onClick, icon }) {
-  const v = optionVisual(state);
-  return (
-    <button
-      className="lp-opt"
-      disabled={disabled}
-      onClick={onClick}
-      style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textAlign: "left",
-        padding: "14px 16px", marginBottom: 10, borderRadius: 14, border: `2px solid ${v.border}`, background: v.bg,
-        cursor: disabled ? "default" : "pointer", fontSize: 15.5, color: v.color, fontWeight: 600,
-      }}
-    >
-      <span>{label}</span>
-      {icon}
-    </button>
-  );
-}
-
-function CheckButton({ disabled, onClick, label = "Check" }) {
-  return (
-    <button
-      disabled={disabled}
-      onClick={onClick}
-      className="lp-btn"
-      style={{
-        width: "100%", padding: "15px 0", borderRadius: 14, border: "none", marginTop: 8,
-        background: disabled ? "#E7E5EE" : "#17213A", color: "#fff", fontWeight: 800, fontSize: 16,
-        cursor: disabled ? "default" : "pointer", fontFamily: FONT_DISPLAY,
-        boxShadow: disabled ? "none" : `0 4px 0 ${darken("#17213A", 0.35)}`,
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function FeedbackAndContinue({ isCorrect, explain, onContinue }) {
-  return (
-    <div className="lp-pop">
-      {explain && (
-        <div style={{ background: isCorrect ? "#EAFAF0" : "#FFF7E0", borderRadius: 12, padding: "12px 14px", marginTop: 4, marginBottom: 12 }}>
-          <p style={{ fontSize: 14, color: isCorrect ? "#166A3C" : "#8A6A00", margin: 0, fontWeight: 600 }}>{isCorrect ? "Nice, that's right! " : "Not quite — "}{explain}</p>
-        </div>
-      )}
-      <button
-        onClick={onContinue}
-        className="lp-btn"
-        style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer", fontFamily: FONT_DISPLAY, boxShadow: `0 4px 0 ${darken("#17213A", 0.35)}` }}
-      >
-        Continue
-      </button>
-    </div>
-  );
-}
-
-function SingleSelectQuestion({ data, onAnswered }) {
-  const [selected, setSelected] = useState(null);
-  const [confirmed, setConfirmed] = useState(false);
-  const isCorrect = selected === data.correct;
-  return (
-    <div>
-      <p style={{ fontSize: 19, fontWeight: 800, color: "#17213A", lineHeight: 1.4, marginBottom: 18, fontFamily: FONT_DISPLAY }}>{data.q}</p>
-      {data.options.map((opt, oi) => {
-        let state = "idle";
-        if (confirmed && oi === data.correct) state = "correct";
-        else if (confirmed && oi === selected) state = "incorrect";
-        else if (!confirmed && oi === selected) state = "selected";
-        return (
-          <OptionButton
-            key={oi}
-            label={opt}
-            state={state}
-            disabled={confirmed}
-            onClick={() => setSelected(oi)}
-            icon={confirmed && oi === data.correct ? <Check size={18} color="#1C9450" /> : confirmed && oi === selected ? <X size={18} color="#D8465F" /> : null}
-          />
-        );
-      })}
-      {!confirmed ? (
-        <CheckButton disabled={selected === null} onClick={() => setConfirmed(true)} />
-      ) : (
-        <FeedbackAndContinue isCorrect={isCorrect} explain={data.explain} onContinue={() => onAnswered(isCorrect)} />
-      )}
-    </div>
-  );
-}
-
-function TrueFalseQuestion({ data, onAnswered }) {
-  const [selected, setSelected] = useState(null); // true | false
-  const [confirmed, setConfirmed] = useState(false);
-  const isCorrect = selected === data.correct;
-  const opts = [true, false];
-  return (
-    <div>
-      <p style={{ fontSize: 19, fontWeight: 800, color: "#17213A", lineHeight: 1.4, marginBottom: 18, fontFamily: FONT_DISPLAY }}>{data.q}</p>
-      <div style={{ display: "flex", gap: 10 }}>
-        {opts.map((val) => {
-          let state = "idle";
-          if (confirmed && val === data.correct) state = "correct";
-          else if (confirmed && val === selected) state = "incorrect";
-          else if (!confirmed && val === selected) state = "selected";
-          const v = optionVisual(state);
-          return (
-            <button
-              key={String(val)}
-              className="lp-opt"
-              disabled={confirmed}
-              onClick={() => setSelected(val)}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "18px 0", borderRadius: 14, border: `2px solid ${v.border}`, background: v.bg, color: v.color, fontWeight: 800, fontSize: 16, cursor: confirmed ? "default" : "pointer", fontFamily: FONT_DISPLAY }}
-            >
-              {val ? "True" : "False"}
-              {confirmed && val === data.correct && <Check size={18} color="#1C9450" />}
-              {confirmed && val === selected && val !== data.correct && <X size={18} color="#D8465F" />}
-            </button>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 8 }}>
-        {!confirmed ? (
-          <CheckButton disabled={selected === null} onClick={() => setConfirmed(true)} />
-        ) : (
-          <FeedbackAndContinue isCorrect={isCorrect} explain={data.explain} onContinue={() => onAnswered(isCorrect)} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MultiSelectQuestion({ data, onAnswered }) {
-  const [selected, setSelected] = useState([]);
-  const [confirmed, setConfirmed] = useState(false);
-  const correctSet = [...data.correct].sort().join(",");
-  const isCorrect = [...selected].sort().join(",") === correctSet;
-  const toggle = (oi) => setSelected((prev) => (prev.includes(oi) ? prev.filter((x) => x !== oi) : [...prev, oi]));
-  return (
-    <div>
-      <p style={{ fontSize: 19, fontWeight: 800, color: "#17213A", lineHeight: 1.4, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{data.q}</p>
-      <p style={{ fontSize: 12.5, color: "#9C99A6", fontWeight: 700, letterSpacing: 0.3, marginBottom: 14 }}>SELECT ALL THAT APPLY</p>
-      {data.options.map((opt, oi) => {
-        const isSel = selected.includes(oi);
-        const isRight = data.correct.includes(oi);
-        let state = "idle";
-        if (confirmed && isRight) state = "correct";
-        else if (confirmed && isSel && !isRight) state = "incorrect";
-        else if (!confirmed && isSel) state = "selected";
-        return (
-          <OptionButton
-            key={oi}
-            label={opt}
-            state={state}
-            disabled={confirmed}
-            onClick={() => toggle(oi)}
-            icon={confirmed && isRight ? <Check size={18} color="#1C9450" /> : confirmed && isSel && !isRight ? <X size={18} color="#D8465F" /> : !confirmed ? (
-              <span style={{ width: 18, height: 18, borderRadius: 6, border: `2px solid ${isSel ? "#2E7FD1" : "#D8D5E5"}`, background: isSel ? "#2E7FD1" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                {isSel && <Check size={12} color="#fff" />}
-              </span>
-            ) : null}
-          />
-        );
-      })}
-      {!confirmed ? (
-        <CheckButton disabled={selected.length === 0} onClick={() => setConfirmed(true)} />
-      ) : (
-        <FeedbackAndContinue isCorrect={isCorrect} explain={data.explain} onContinue={() => onAnswered(isCorrect)} />
-      )}
-    </div>
-  );
-}
-
-function TypedQuestion({ data, onAnswered }) {
-  const [value, setValue] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const accepted = (data.accepted || []).map((a) => a.trim().toLowerCase());
-  const isCorrect = accepted.includes(value.trim().toLowerCase());
-  return (
-    <div>
-      <p style={{ fontSize: 19, fontWeight: 800, color: "#17213A", lineHeight: 1.4, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{data.q}</p>
-      <p style={{ fontSize: 12.5, color: "#9C99A6", fontWeight: 700, letterSpacing: 0.3, marginBottom: 14 }}>TYPE YOUR ANSWER</p>
-      <input
-        type="text"
-        value={value}
-        disabled={confirmed}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && value.trim() && !confirmed) setConfirmed(true); }}
-        placeholder="Your answer…"
-        style={{
-          width: "100%", boxSizing: "border-box", padding: "14px 16px", borderRadius: 14, marginBottom: 12, fontSize: 16, fontWeight: 600,
-          border: `2px solid ${confirmed ? (isCorrect ? "#1C9450" : "#D8465F") : "#EAEAF2"}`,
-          background: confirmed ? (isCorrect ? "#EAFAF0" : "#FCEAEC") : "#fff",
-          color: confirmed ? (isCorrect ? "#166A3C" : "#A23347") : "#17213A", outline: "none",
-        }}
-      />
-      {confirmed && !isCorrect && (
-        <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: "0 0 12px" }}>Accepted answer: <strong>{data.accepted[0]}</strong></p>
-      )}
-      {!confirmed ? (
-        <CheckButton disabled={!value.trim()} onClick={() => setConfirmed(true)} />
-      ) : (
-        <FeedbackAndContinue isCorrect={isCorrect} explain={data.explain} onContinue={() => onAnswered(isCorrect)} />
-      )}
-    </div>
-  );
-}
-
-function Question({ data, onAnswered }) {
-  const qtype = data.type || "mcq";
-  if (qtype === "truefalse") return <TrueFalseQuestion data={data} onAnswered={onAnswered} />;
-  if (qtype === "multi") return <MultiSelectQuestion data={data} onAnswered={onAnswered} />;
-  if (qtype === "type") return <TypedQuestion data={data} onAnswered={onAnswered} />;
-  return <SingleSelectQuestion data={data} onAnswered={onAnswered} />;
-}
-
-/* ============================================================
-   LESSON VIEW
-   ============================================================ */
-
-function buildSteps(lesson) {
-  const steps = [];
-  let current = null;
-  const pushCurrent = () => { if (current && current.blocks.length) steps.push(current); current = null; };
-  lesson.blocks.forEach((b) => {
-    if (b.type === "check") {
-      pushCurrent();
-      // b.type ("check") marks its role in the lesson; b.qtype (mcq/truefalse/multi/type) is its answer format.
-      steps.push({ type: "check", block: { ...b, type: b.qtype || "mcq" } });
-      return;
-    }
-    if (!current) current = { type: "read", blocks: [] };
-    current.blocks.push(b);
-    if (b.type === "h" && current.blocks.length > 1) {
-      const headingBlock = current.blocks.pop();
-      pushCurrent();
-      current = { type: "read", blocks: [headingBlock] };
-    }
-  });
-  pushCurrent();
-  lesson.quiz.forEach((q, i) => steps.push({ type: "quiz", q, index: i }));
-  steps.push({ type: "results" });
-  return steps;
-}
-
-function StarRow({ percent }) {
-  const filled = percent >= 90 ? 3 : percent >= 66 ? 2 : percent > 0 ? 1 : 0;
-  return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 6 }}>
-      {[0, 1, 2].map((i) => (
-        <Star key={i} size={26} color={i < filled ? "#D9791F" : "#E7E5EE"} fill={i < filled ? "#D9791F" : "#E7E5EE"} />
-      ))}
-    </div>
-  );
-}
-
-function LessonView({ course, module, lesson, onBack, completed, lastScore, nextLesson, onMarkComplete, onGoModules, onGoHome, onGoNext }) {
-  const [mode, setMode] = useState(completed ? "recap" : "lesson");
-  const steps = React.useMemo(() => buildSteps(lesson), [lesson]);
-  const quizStartIndex = steps.findIndex((s) => s.type === "quiz");
-  const [stepIndex, setStepIndex] = useState(0);
-  const [quizResults, setQuizResults] = useState({});
-  const markedRef = useRef(false);
-
-  const step = steps[stepIndex];
-  const stepColor = (t) => (t === "read" ? "#2E7FD1" : t === "check" ? "#D8465F" : t === "quiz" ? "#1C9450" : "#D9791F");
-
-  const goNext = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1));
-
-  const handleQuizAnswered = (qIndex, correct) => {
-    setQuizResults((prev) => ({ ...prev, [qIndex]: correct }));
-    goNext();
-  };
-
-  const score = Object.values(quizResults).filter(Boolean).length;
-  const passed = score >= Math.ceil(lesson.quiz.length * 0.66);
-  const percent = lesson.quiz.length ? Math.round((score / lesson.quiz.length) * 100) : 100;
-
-  useEffect(() => {
-    if (mode === "lesson" && step.type === "results" && passed && !markedRef.current) {
-      markedRef.current = true;
-      onMarkComplete(score, lesson.quiz.length);
-    }
-  }, [mode, step, passed, onMarkComplete]);
-
-  const primaryBtn = (bg, label, onClick, extra) => (
-    <button
-      onClick={onClick}
-      className="lp-btn"
-      style={{ width: "100%", padding: "16px 0", borderRadius: 14, border: "none", background: bg, color: textOn(bg), fontWeight: 800, fontSize: 16, cursor: "pointer", fontFamily: FONT_DISPLAY, marginBottom: 10, boxShadow: `0 4px 0 ${darken(bg, 0.32)}`, ...extra }}
-    >
-      {label}
-    </button>
-  );
-  const ghostBtn = (label, onClick, color = "#5A5F6E") => (
-    <button onClick={onClick} style={{ width: "100%", padding: "13px 0", borderRadius: 14, border: "none", background: "transparent", color, fontWeight: 700, fontSize: 15, cursor: "pointer", marginBottom: 4 }}>
-      {label}
-    </button>
-  );
-
-  if (mode === "recap") {
-    const lastPercent = lastScore && lastScore.total ? Math.round((lastScore.score / lastScore.total) * 100) : null;
-    return (
-      <div className="lp-shell-narrow">
-        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0, fontWeight: 700 }}>
-          <ArrowLeft size={16} /> Module {module.number}
-        </button>
-        <div className="lp-pop" style={{ textAlign: "center", paddingTop: 24 }}>
-          <div className="lp-float" style={{ width: 76, height: 76, borderRadius: "50%", background: "#EAFAF0", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-            <Check size={34} color="#1C9450" />
-          </div>
-          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: course.accent, marginBottom: 6 }}>LESSON {lesson.id}</p>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: course.ink, marginBottom: 10, fontFamily: FONT_DISPLAY }}>{lesson.title}</h1>
-          {lastPercent !== null && <StarRow percent={lastPercent} />}
-          <p style={{ fontSize: 15.5, color: "#8A8FA0", marginBottom: 28, fontWeight: 600 }}>
-            {lastScore ? `You've already passed this — scored ${lastScore.score}/${lastScore.total} last time.` : "You've already completed this lesson."}
-          </p>
-          {primaryBtn(course.accent, "Redo the lesson", () => setMode("lesson"))}
-          {ghostBtn("Back to modules", onGoModules)}
-          {ghostBtn("Back to home", onGoHome)}
-          <p style={{ fontSize: 12, color: "#B0AEC4", marginTop: 14, fontWeight: 600 }}>Redoing won't undo your progress — this lesson stays marked complete either way.</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="lp-shell-narrow">
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0, fontWeight: 700 }}>
-        <ArrowLeft size={16} /> Module {module.number}
-      </button>
-
-      {step.type !== "results" && (
-        <>
-          <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-            {steps.slice(0, -1).map((s, i) => (
-              <div key={i} style={{ flex: 1, height: 9, borderRadius: 5, background: i <= stepIndex ? stepColor(s.type) : "#EDEDF5", transition: "background 0.2s" }} />
-            ))}
-          </div>
-          <p style={{ fontSize: 12, color: "#B0AEC4", marginBottom: 20, fontWeight: 700 }}>{Math.min(stepIndex + 1, steps.length - 1)} of {steps.length - 1}</p>
-        </>
-      )}
-
-      {step.type === "read" && (
-        <div className="lp-pop">
-          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: course.accent, marginBottom: 6 }}>LESSON {lesson.id}</p>
-          {lesson.kind && lesson.kind !== "standard" && (
-            <span style={{ display: "inline-block", fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", borderRadius: 999, padding: "3px 10px", marginBottom: 10, color: lesson.kind === "gate" ? "#B5620F" : "#6A4FC2", background: lesson.kind === "gate" ? "#FDF1E4" : "#F1EEFC" }}>
-              {lesson.kind === "gate" ? "Quick Primer" : lesson.kind === "case-study" ? "Case Study" : lesson.kind}
-            </span>
-          )}
-          <h1 style={{ fontSize: 25, fontWeight: 800, color: course.ink, lineHeight: 1.3, marginBottom: 18, fontFamily: FONT_DISPLAY }}>{lesson.title}</h1>
-          {step.blocks.map((b, i) => {
-            if (b.type === "term") return <TermCard key={i} term={b.term} definition={b.definition} accent={course.accent} ink={course.ink} />;
-            if (b.type === "diagram") return <Diagram key={i} kind={b.kind} accent={course.accent} ink={course.ink} />;
-            return <Block key={i} block={b} accent={course.accent} ink={course.ink} />;
-          })}
-          <button className="lp-btn" onClick={goNext} style={{ width: "100%", padding: "15px 0", borderRadius: 14, border: "none", background: course.accent, color: textOn(course.accent), fontWeight: 800, fontSize: 16, cursor: "pointer", marginTop: 8, fontFamily: FONT_DISPLAY, boxShadow: `0 4px 0 ${darken(course.accent, 0.3)}` }}>
-            Continue
-          </button>
-        </div>
-      )}
-
-      {step.type === "check" && (
-        <div className="lp-pop" key={`check-${stepIndex}`}>
-          <p style={{ fontSize: 12.5, fontWeight: 800, color: "#D8465F", letterSpacing: 0.5, marginBottom: 12 }}>QUICK PAUSE</p>
-          <Question data={step.block} onAnswered={goNext} />
-        </div>
-      )}
-
-      {step.type === "quiz" && (
-        <div className="lp-pop" key={`quiz-${stepIndex}`}>
-          <p style={{ fontSize: 12.5, fontWeight: 800, color: "#1C9450", letterSpacing: 0.5, marginBottom: 12 }}>QUIZ · QUESTION {step.index + 1} OF {lesson.quiz.length}</p>
-          <Question data={step.q} onAnswered={(correct) => handleQuizAnswered(step.index, correct)} />
-        </div>
-      )}
-
-      {step.type === "results" && (
-        <div className="lp-pop" style={{ textAlign: "center", paddingTop: 20 }}>
-          <div className="lp-float" style={{ width: 84, height: 84, borderRadius: "50%", background: passed ? "#EAFAF0" : "#FFF7E0", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-            {passed ? <Check size={38} color="#1C9450" /> : <X size={38} color="#D9791F" />}
-          </div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: course.ink, marginBottom: 8, fontFamily: FONT_DISPLAY }}>{passed ? "Lesson complete!" : "Almost there"}</h2>
-          {passed && <StarRow percent={percent} />}
-          <p style={{ fontSize: 15.5, color: "#8A8FA0", marginBottom: 26, fontWeight: 600 }}>{score}/{lesson.quiz.length} correct{passed ? " — nice work!" : " — you need a couple more right to pass."}</p>
-
-          {passed ? (
-            <>
-              {nextLesson ? (
-                primaryBtn(course.accent, `Next: ${nextLesson.lesson.id} ${nextLesson.lesson.title} →`, () => onGoNext(score, lesson.quiz.length))
-              ) : (
-                primaryBtn("#1C9450", "You finished the course! 🎉", onGoModules)
-              )}
-              {ghostBtn("Back to modules", onGoModules)}
-              {ghostBtn("Back to home", onGoHome)}
-            </>
-          ) : (
-            <>
-              {primaryBtn(course.ink, "Retry the quiz", () => { markedRef.current = false; setQuizResults({}); setStepIndex(quizStartIndex); })}
-              {ghostBtn("Back to modules", onGoModules)}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ============================================================
-   MODULE VIEW — list of lessons, sequential unlock
-   ============================================================ */
-
-function ModuleView({ course, module, completedLessons, onBack, onOpenLesson }) {
-  return (
-    <div className="lp-shell-wide">
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
-        <ArrowLeft size={16} /> {course.title}
-      </button>
-      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: course.accent, marginBottom: 6 }}>MODULE {module.number}</p>
-      <h1 style={{ fontSize: 27, fontWeight: 800, color: course.ink, marginBottom: 8, fontFamily: FONT_DISPLAY }}>{module.title}</h1>
-      <p style={{ fontSize: 15.5, color: "#6B7080", marginBottom: 28, lineHeight: 1.6, maxWidth: 560 }}>{module.description}</p>
-
-      {module.lessons.length === 0 && (
-        <>
-          <p style={{ fontSize: 13.5, color: "#B0AEC4", marginBottom: 14, fontWeight: 600 }}>Lessons below are planned — content is being built next.</p>
-          {(module.lessonPreview || []).map((l) => (
-            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", marginBottom: 10, borderRadius: 14, border: "1px solid #EAEAF2", background: "#F6F7FB" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#E7E5EE", color: "#A3A0B4" }}>
-                <Lock size={13} />
-              </div>
-              <div>
-                <p style={{ fontSize: 12.5, color: "#A3A0B4", margin: 0, fontWeight: 700 }}>{l.id}</p>
-                <p style={{ fontSize: 15, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>{l.title}</p>
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      <div className="lp-grid">
-        {module.lessons.map((lesson, i) => {
-          const isDone = completedLessons.includes(lesson.id);
-          const prevDone = i === 0 || completedLessons.includes(module.lessons[i - 1].id);
-          const isLocked = !prevDone && !isDone;
-          return (
-            <button
-              key={lesson.id}
-              disabled={isLocked}
-              onClick={() => onOpenLesson(lesson)}
-              className="lp-card"
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
-                padding: "18px 18px", borderRadius: 16,
-                border: `2px solid ${isDone ? "#BFE8CC" : "#EAEAF2"}`,
-                background: isDone ? "#F5FBF7" : isLocked ? "#F6F7FB" : "#fff",
-                cursor: isLocked ? "default" : "pointer", textAlign: "left",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  background: isDone ? "#1C9450" : isLocked ? "#E7E5EE" : course.accent,
-                  color: isDone ? "#fff" : isLocked ? "#A3A0B4" : textOn(course.accent), fontSize: 13, fontWeight: 800,
-                }}>
-                  {isDone ? <Check size={16} /> : isLocked ? <Lock size={13} /> : lesson.id.split(".")[1]}
-                </div>
-                <div>
-                  <p style={{ fontSize: 12.5, color: "#A3A0B4", margin: 0, fontWeight: 700 }}>{lesson.id}</p>
-                  <p style={{ fontSize: 15.5, color: isLocked ? "#A3A0B4" : course.ink, margin: 0, fontWeight: 700 }}>{lesson.title}</p>
-                </div>
-              </div>
-              {!isLocked && <ChevronRight size={18} color="#B0AEC4" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   COURSE MAP — modules with sequential lock
-   ============================================================ */
-
-function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurriculum }) {
-  const isModuleComplete = (m) => m.lessons.length > 0 && m.lessons.every((l) => completedLessons.includes(l.id));
-  const nextUnlockedIndex = course.modules.findIndex((m, i) => {
-    const prevComplete = i === 0 || isModuleComplete(course.modules[i - 1]);
-    return prevComplete && !isModuleComplete(m);
-  });
-  const offsets = [0, -28, -42, -28, 0, 28, 42, 28];
-  const sectionOrder = [...new Set(course.modules.map((m) => m.section))];
-
-  return (
-    <div className="lp-shell-narrow">
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
-        <ArrowLeft size={16} /> All courses
-      </button>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 30, gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: course.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-            <CourseIcon name={course.icon} size={19} color={textOn(course.accent)} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 27, fontWeight: 800, color: course.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{course.title}</h1>
-            <p style={{ fontSize: 15, color: "#6B7080", margin: 0, fontWeight: 600 }}>{course.tagline}</p>
-          </div>
-        </div>
-        <button
-          className="lp-btn"
-          onClick={onSeeCurriculum}
-          style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, background: "#fff", border: `2px solid ${course.accent}`, color: course.ink, fontSize: 13, fontWeight: 800, borderRadius: 20, padding: "9px 14px", cursor: "pointer" }}
-        >
-          <BookOpen size={14} /> Full list
-        </button>
-      </div>
-
-      <div style={{ position: "relative", padding: "10px 0" }}>
-        {course.modules.map((m, i) => {
-          const prevComplete = i === 0 || isModuleComplete(course.modules[i - 1]);
-          const complete = isModuleComplete(m);
-          const isLocked = !prevComplete && !complete;
-          const isCurrent = i === nextUnlockedIndex;
-          // Consistent 3-state colour system: done = green, available = the
-          // course's own accent, locked = grey. (Previously this cycled
-          // through a 5-colour rainbow per module index, which is what made
-          // the path look busy/inconsistent next to the sign-in page.)
-          const color = complete ? "#1C9450" : isLocked ? "#E7E5EE" : course.accent;
-          const offset = offsets[i % offsets.length];
-          const isNewLevel = i === 0 || course.modules[i - 1].section !== m.section;
-          const levelNumber = sectionOrder.indexOf(m.section) + 1;
-          return (
-            <React.Fragment key={m.id}>
-              {isNewLevel && (
-                <div style={{ background: course.ink, color: "#fff", borderRadius: 16, padding: "10px 18px", margin: "22px 0 24px", textAlign: "center" }}>
-                  <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, opacity: 0.7, margin: 0 }}>LEVEL {levelNumber}</p>
-                  <p style={{ fontSize: 15.5, fontWeight: 800, margin: "2px 0 0", fontFamily: FONT_DISPLAY }}>{m.section}</p>
-                </div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginLeft: offset, marginBottom: 26 }}>
-                <button
-                  className={`lp-node lp-btn${isCurrent ? " current" : ""}`}
-                  disabled={isLocked}
-                  onClick={() => onOpenModule(m)}
-                  style={{
-                    width: 60, height: 60, borderRadius: "50%", flexShrink: 0, display: "flex",
-                    alignItems: "center", justifyContent: "center", zIndex: 1,
-                    background: color, color: isLocked ? "#A3A0B4" : textOn(color), fontWeight: 800, fontSize: 18,
-                    border: "4px solid #FFFFFF", cursor: isLocked ? "default" : "pointer",
-                    boxShadow: isLocked ? "none" : `0 4px 0 ${complete ? "#127A3E" : darken(color, 0.28)}`,
-                  }}
-                  title={m.title}
-                >
-                  {complete ? <Check size={22} /> : isLocked ? <Lock size={18} /> : m.number}
-                </button>
-                <p style={{ fontSize: 11.5, fontWeight: 700, color: isLocked ? "#C6C3D6" : course.ink, margin: "8px 0 0", lineHeight: 1.3, maxWidth: 130, textAlign: "center" }}>{m.title}</p>
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   CURRICULUM — full flat list of every module + lesson
-   ============================================================ */
-
-function CurriculumView({ course, completedLessons, onBack }) {
-  const sections = [];
-  course.modules.forEach((m) => {
-    const sec = m.section || "Course";
-    let bucket = sections.find((s) => s.name === sec);
-    if (!bucket) { bucket = { name: sec, modules: [] }; sections.push(bucket); }
-    bucket.modules.push(m);
-  });
-
-  return (
-    <div className="lp-shell-wide">
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
-        <ArrowLeft size={16} /> {course.title}
-      </button>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <Sparkles size={20} color={course.accent} />
-        <h1 style={{ fontSize: 27, fontWeight: 800, color: course.ink, margin: 0, fontFamily: FONT_DISPLAY }}>Full curriculum</h1>
-      </div>
-      <p style={{ fontSize: 14.5, color: "#8A8FA0", marginBottom: 26, fontWeight: 600 }}>Everything this course will cover, start to finish.</p>
-
-      <div className="lp-grid">
-        {sections.map((sec) => (
-          <div key={sec.name} style={{ marginBottom: 10 }}>
-            <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3, color: "#B0AEC4", marginBottom: 10 }}>{sec.name.toUpperCase()}</p>
-            {sec.modules.map((m) => {
-              const lessonsToShow = m.lessons.length > 0 ? m.lessons : (m.lessonPreview || []);
-              return (
-                <div key={m.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: "16px 18px", marginBottom: 10 }}>
-                  <p style={{ fontSize: 15, fontWeight: 800, color: course.ink, margin: "0 0 8px" }}>Module {m.number} — {m.title}</p>
-                  {lessonsToShow.map((l) => {
-                    const done = completedLessons.includes(l.id);
-                    return (
-                      <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
-                        {done ? <Check size={14} color="#1C9450" /> : <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#D8D5E5" }} />}
-                        <p style={{ fontSize: 14, color: done ? "#1C9450" : "#5A5F6E", margin: 0, fontWeight: 600 }}>{l.id} {l.title}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   HUB — course picker (multi-course home)
-   ============================================================ */
-
-/* ============================================================
-   DAILY REVIEW (spaced repetition session)
-   ============================================================
-   All of today's due lessons, across every course, combined into ONE
-   sequential quiz — reusing the same Question component (and its built-in
-   explain-on-wrong feedback) that regular lessons use. No new content is
-   needed: each question is pulled straight from that lesson's existing quiz. */
-function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
-  const [items] = useState(() =>
-    dueList.map((item) => ({ ...item, question: pickReviewQuestion(item.lesson) })).filter((item) => item.question)
-  );
-  const [index, setIndex] = useState(0);
-  const [results, setResults] = useState([]); // { item, correct }
-
-  if (items.length === 0) {
-    return (
-      <div className="lp-shell-narrow">
-        <p style={{ fontSize: 15, color: "#8A8FA0", fontWeight: 700, marginBottom: 16 }}>Nothing due for review right now.</p>
-        <button onClick={onExit} className="lp-btn" style={{ padding: "12px 20px", borderRadius: 12, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, cursor: "pointer", fontFamily: FONT_DISPLAY }}>Back home</button>
-      </div>
-    );
-  }
-
-  if (index >= items.length) {
-    const correctCount = results.filter((r) => r.correct).length;
-    const missed = results.filter((r) => !r.correct);
-    return (
-      <div className="lp-shell-narrow">
-        <div className="lp-pop">
-          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 6 }}>DAILY REVIEW</p>
-          <h1 style={{ fontSize: 25, fontWeight: 800, color: "#17213A", marginBottom: 14, fontFamily: FONT_DISPLAY }}>{correctCount}/{items.length} correct</h1>
-          {missed.length === 0 ? (
-            <p style={{ fontSize: 15, color: "#166A3C", fontWeight: 700, marginBottom: 20 }}>Perfect — every one of these just moved up a review box. 🎉</p>
-          ) : (
-            <>
-              <p style={{ fontSize: 14.5, color: "#8A8FA0", fontWeight: 600, marginBottom: 14 }}>These went back to Box 1 — worth a proper revisit:</p>
-              {missed.map(({ item }) => (
-                <button
-                  key={item.course.id + item.lesson.id}
-                  onClick={() => onRevisitLesson(item.course, item.module, item.lesson)}
-                  className="lp-btn"
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", background: "#FFF7E0", border: "2px solid #FDECC8", borderRadius: 14, padding: "12px 16px", marginBottom: 10, cursor: "pointer" }}
-                >
-                  <div>
-                    <p style={{ fontSize: 12.5, fontWeight: 800, color: "#8A6A00", margin: 0 }}>{item.course.title} · Lesson {item.lesson.id}</p>
-                    <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: 0 }}>{item.lesson.title}</p>
-                  </div>
-                  <ChevronRight size={18} color="#B0AEC4" />
-                </button>
-              ))}
-            </>
-          )}
-          <button onClick={onExit} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 15.5, cursor: "pointer", marginTop: 8, fontFamily: FONT_DISPLAY }}>Done</button>
-        </div>
-      </div>
-    );
-  }
-
-  const current = items[index];
-  return (
-    <div className="lp-shell-narrow">
-      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>DAILY REVIEW · {index + 1} of {items.length}</p>
-      <p style={{ fontSize: 12.5, color: "#B0AEC4", fontWeight: 700, marginBottom: 16 }}>{current.course.title} · Lesson {current.lesson.id} — {current.lesson.title}</p>
-      <Question
-        key={current.course.id + current.lesson.id}
-        data={current.question}
-        onAnswered={(isCorrect) => {
-          onAnswer(current.course.id, current.lesson.id, isCorrect);
-          setResults((r) => [...r, { item: current, correct: isCorrect }]);
-          setIndex((i) => i + 1);
-        }}
-      />
-    </div>
-  );
-}
-
-function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview }) {
-  const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
-  return (
-    <div className="lp-shell-wide">
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="lp-float" style={{ width: 34, height: 34, borderRadius: 10, background: "#17213A", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <GraduationCap size={18} color="#fff" />
-            </div>
-            <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.4, color: "#8A8FA0", margin: 0 }}>YOUR ACADEMY</p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#FFF7E0", borderRadius: 20, padding: "7px 13px" }}>
-            <Star size={15} color="#D9791F" fill="#D9791F" />
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#17213A" }}>{totalStars}</span>
-          </div>
-        </div>
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: "#17213A", marginBottom: 28, fontFamily: FONT_DISPLAY }}>Let's keep learning! 👋</h1>
-
-        {dueCount > 0 && (
-          <button
-            onClick={onOpenReview}
-            className="lp-btn"
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "#FFF7E0", border: "2px solid #FDECC8", borderRadius: 18, padding: "16px 20px", marginBottom: 24, cursor: "pointer", textAlign: "left" }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: "#D9791F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <RotateCw size={19} color="#fff" />
-              </div>
-              <div>
-                <p style={{ fontSize: 12.5, fontWeight: 800, color: "#8A6A00", margin: 0, letterSpacing: 0.3 }}>DAILY REVIEW</p>
-                <p style={{ fontSize: 16, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>{dueCount} review{dueCount === 1 ? "" : "s"} due today</p>
-              </div>
-            </div>
-            <ChevronRight size={20} color="#D9791F" />
-          </button>
-        )}
-
-        <div className="lp-grid">
-          {courses.map((c) => {
-            const completedLessons = progressMap[c.id]?.completedLessons || [];
-            const done = completedLessons.length;
-            const total = c.modules.reduce((n, m) => n + (m.lessons.length || (m.lessonPreview || []).length), 0);
-            const isModuleComplete = (m) => m.lessons.length > 0 && m.lessons.every((l) => completedLessons.includes(l.id));
-            const currentIndex = c.modules.findIndex((m) => !isModuleComplete(m));
-            const currentModule = currentIndex === -1 ? c.modules[c.modules.length - 1] : c.modules[currentIndex];
-            return (
-              <button key={c.id} className="lp-btn lp-card" onClick={() => onOpenCourse(c)} style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer", boxShadow: "0 3px 0 rgba(23,33,58,0.05)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>
-                    <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{c.tagline}</p>
-                  </div>
-                </div>
-
-                <p style={{ fontSize: 12.5, fontWeight: 700, color: c.ink, margin: "0 0 8px" }}>Module {currentModule.number} of {c.modules.length} — {currentModule.title}</p>
-
-                <div style={{ height: 10, background: "#F1EFF8", borderRadius: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${total ? (done / total) * 100 : 0}%`, background: c.accent, borderRadius: 6, transition: "width 0.4s ease" }} />
-                </div>
-                <p style={{ fontSize: 12.5, color: "#A3A0B4", marginTop: 8, marginBottom: 0, fontWeight: 700 }}>{done}/{total} lessons complete</p>
-              </button>
-            );
-          })}
-
-          <div style={{ border: "2px dashed #E7E5EE", borderRadius: 20, padding: 22, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontSize: 14, color: "#B0AEC4", margin: 0, fontWeight: 700 }}>Psychology and Effective Learning — coming soon ✨</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   ROOT APP
-   ============================================================ */
-
-function getNextLesson(course, module, lesson) {
-  const modIdx = course.modules.findIndex((m) => m.id === module.id);
-  const lessonIdx = module.lessons.findIndex((l) => l.id === lesson.id);
-  if (lessonIdx !== -1 && lessonIdx < module.lessons.length - 1) {
-    return { module, lesson: module.lessons[lessonIdx + 1] };
-  }
-  for (let i = modIdx + 1; i < course.modules.length; i++) {
-    const nm = course.modules[i];
-    if (nm.lessons.length > 0) return { module: nm, lesson: nm.lessons[0] };
-  }
-  return null;
-}
-
-export default function LearningPlatform({ user }) {
-  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review
-  const [progressMap, setProgressMap] = useState({});
-  const [loaded, setLoaded] = useState(false);
-
-  // A course with no `restrictedTo` field is visible to everyone. A course
-  // with `restrictedTo: ["someone@email.com"]` only shows for that account.
-  const visibleCourses = COURSES.filter(
-    (c) => !c.restrictedTo || (user?.email && c.restrictedTo.includes(user.email))
-  );
-
-  useEffect(() => {
-    (async () => {
-      const entries = await Promise.all(visibleCourses.map(async (c) => {
-        const loaded = await loadProgress(c.id);
-        const base = { completedLessons: [], scores: {}, review: {}, ...loaded };
-        const backfilled = backfillReviewEntries(c, base);
-        if (backfilled !== base) saveProgress(c.id, backfilled); // only writes back if something was actually missing
-        return [c.id, backfilled];
-      }));
-      setProgressMap(Object.fromEntries(entries));
-      setLoaded(true);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
-
-  const completeLesson = useCallback((courseId, lessonId, score, total) => {
-    setProgressMap((prev) => {
-      const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
-      const alreadyDone = cur.completedLessons.includes(lessonId);
-      const completedLessons = alreadyDone ? cur.completedLessons : [...cur.completedLessons, lessonId];
-      const review = { ...(cur.review || {}) };
-
-      // Seed the spaced-repetition queue the moment every lesson in THIS
-      // lesson's module is complete — not the instant this one lesson
-      // finishes (per the "only after finishing a module" decision). Only
-      // ever ADDS new entries, never overwrites one that already exists,
-      // so a lesson already progressing through review boxes never resets.
-      const course = COURSES.find((c) => c.id === courseId);
-      const module = course?.modules.find((m) => m.lessons.some((l) => l.id === lessonId));
-      if (module && module.lessons.every((l) => completedLessons.includes(l.id))) {
-        module.lessons.forEach((l) => { if (!review[l.id]) review[l.id] = newReviewEntry(); });
-      }
-
-      const next = {
-        completedLessons,
-        scores: { ...(cur.scores || {}), [lessonId]: { score, total, at: Date.now() } },
-        review,
-      };
-      saveProgress(courseId, next);
-      return { ...prev, [courseId]: next };
-    });
-  }, []);
-
-  // Called once per question during a daily review session — advances (or
-  // resets) that lesson's Leitner box based on whether it was answered
-  // correctly, and persists it the same way completeLesson does.
-  const recordReview = useCallback((courseId, lessonId, wasCorrect) => {
-    setProgressMap((prev) => {
-      const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
-      const nextEntry = advanceReviewEntry(cur.review?.[lessonId], wasCorrect);
-      const next = { ...cur, review: { ...(cur.review || {}), [lessonId]: nextEntry } };
-      saveProgress(courseId, next);
-      return { ...prev, [courseId]: next };
-    });
-  }, []);
-
-  if (!loaded) {
-    return <div style={{ minHeight: 400, display: "flex", alignItems: "center", justifyContent: "center", color: "#B0AEC4", fontSize: 14, fontWeight: 700 }}>Loading…</div>;
-  }
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: FONT_BODY }}>
-      {/* Rendered once here at the true root, which never unmounts as you
-          navigate between screens — this is what actually fixes the
-          "modules/lessons go to the edge, no spacing" bug. GLOBAL_STYLE
-          defines .lp-shell-wide/.lp-shell-narrow (max-width + centering)
-          and .lp-grid (the gap between cards), but it was previously only
-          rendered inside CourseMap and Hub — so the moment you navigated
-          to ModuleView, LessonView, or CurriculumView (none of which
-          rendered it themselves), React tore the <style> tag out of the
-          page along with the CourseMap/Hub that had it, and those three
-          screens were left with the class names in their JSX but zero
-          matching CSS rules: full-width, no-gap divs, on every device. */}
-      <style>{GLOBAL_STYLE}</style>
-      {view.screen === "hub" && (
-        <Hub
-          courses={visibleCourses}
-          progressMap={progressMap}
-          dueCount={getDueReviews(visibleCourses, progressMap).length}
-          onOpenCourse={(c) => setView({ screen: "course", course: c })}
-          onOpenReview={() => setView({ screen: "review" })}
-        />
-      )}
-      {view.screen === "review" && (
-        <ReviewSession
-          dueList={getDueReviews(visibleCourses, progressMap)}
-          onAnswer={recordReview}
-          onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
-          onExit={() => setView({ screen: "hub" })}
-        />
-      )}
-      {view.screen === "course" && (
-        <CourseMap
-          course={view.course}
-          completedLessons={progressMap[view.course.id]?.completedLessons || []}
-          onBack={() => setView({ screen: "hub" })}
-          onOpenModule={(m) => setView({ screen: "module", course: view.course, module: m })}
-          onSeeCurriculum={() => setView({ screen: "curriculum", course: view.course })}
-        />
-      )}
-      {view.screen === "curriculum" && (
-        <CurriculumView
-          course={view.course}
-          completedLessons={progressMap[view.course.id]?.completedLessons || []}
-          onBack={() => setView({ screen: "course", course: view.course })}
-        />
-      )}
-      {view.screen === "module" && (
-        <ModuleView
-          course={view.course}
-          module={view.module}
-          completedLessons={progressMap[view.course.id]?.completedLessons || []}
-          onBack={() => setView({ screen: "course", course: view.course })}
-          onOpenLesson={(l) => setView({ screen: "lesson", course: view.course, module: view.module, lesson: l })}
-        />
-      )}
-      {view.screen === "lesson" && (() => {
-        const next = getNextLesson(view.course, view.module, view.lesson);
-        return (
-          <LessonView
-            key={view.lesson.id}
-            course={view.course}
-            module={view.module}
-            lesson={view.lesson}
-            completed={(progressMap[view.course.id]?.completedLessons || []).includes(view.lesson.id)}
-            lastScore={progressMap[view.course.id]?.scores?.[view.lesson.id] || null}
-            nextLesson={next}
-            onBack={() => setView({ screen: "module", course: view.course, module: view.module })}
-            onMarkComplete={(score, total) => completeLesson(view.course.id, view.lesson.id, score, total)}
-            onGoModules={() => setView({ screen: "module", course: view.course, module: view.module })}
-            onGoHome={() => setView({ screen: "hub" })}
-            onGoNext={(score, total) => {
-              completeLesson(view.course.id, view.lesson.id, score, total);
-              setView({ screen: "lesson", course: view.course, module: next.module, lesson: next.lesson });
-            }}
-          />
-        );
-      })()}
-    </div>
-  );
-}
