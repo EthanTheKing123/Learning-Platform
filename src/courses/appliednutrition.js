@@ -25,7 +25,7 @@ export const appliedNutrition = {
     {
       id: "m1",
       number: 1,
-      section: "Section 1",
+      section: "Foundations",
       title: "Foundations",
       description: "What nutrition really is, macronutrients, micronutrients, and competing paradigms.",
       lessons: [
@@ -142,6 +142,30 @@ export const appliedNutrition = {
         },
         {
           id: "1.4",
+          kind: "gate",
+          title: "Quick Primer: Reading Nutrition Claims Critically",
+          blocks: [
+            { type: "p", text: "Before this course gets into specific nutrients and supplements — a short, mandatory detour. Nutrition is one of the most heavily marketed topics there is, and being able to weigh a claim is more useful long-term than memorising any single fact in this course." },
+            { type: "h", text: "The hierarchy of evidence" },
+            { type: "p", text: "Not all evidence is equal. When you hear a nutrition claim, ask where it sits on this ladder — the higher up, the more you can trust it." },
+            { type: "diagram", kind: "evidencePyramid" },
+            { type: "h", text: "Three questions to ask about any nutrition claim" },
+            { type: "list", items: [
+              "**What's the evidence, specifically?** 'Studies show...' with no citation is not evidence — it's a claim about evidence.",
+              "**Who funded it, and who's selling something?** A supplement company's own study about its own product deserves more scrutiny than an independent one.",
+              "**Does it match the consensus, or is it an outlier?** One study rarely overturns a body of existing research, however exciting the headline.",
+            ]},
+            { type: "callout", text: "This isn't about dismissing anecdote or expert opinion entirely — they're useful for generating ideas worth testing. The mistake is treating them with the same confidence as a well-run trial or a review of many trials." },
+            { type: "check", qtype: "truefalse", q: "A single new study is generally strong enough evidence to overturn an existing scientific consensus.", correct: false, explain: "A lone study, however striking, sits lower on the evidence hierarchy than a systematic review or meta-analysis of many studies — real paradigm shifts usually need replication, not one headline." },
+          ],
+          quiz: [
+            { q: "Which sits highest on the hierarchy of evidence?", options: ["A testimonial", "An expert's opinion", "A single observational study", "A systematic review / meta-analysis"], correct: 3 },
+            { type: "truefalse", q: "Who funded a study is irrelevant to how much you should trust its conclusions.", correct: false, explain: "Funding source is a real, relevant factor — a study funded by a company selling the product it's testing deserves more scrutiny, not automatic dismissal." },
+            { q: "Why is 'studies show...' with no citation a weak claim on its own?", options: ["Because studies are never trustworthy", "Because it's a claim about evidence, not actual evidence you can check", "Because it's always false", "It isn't weak at all"], correct: 1 },
+          ],
+        },
+        {
+          id: "1.5",
           title: "How Nutrition Guidelines Actually Get Made",
           blocks: [
             { type: "p", text: "Ever wonder who decides how much protein you 'need' or whether saturated fat is 'bad'? Nutrition guidelines come from government bodies (e.g. USDA, NHMRC) and are based on systematic reviews of evidence — but the process has political and economic influences." },
@@ -181,7 +205,7 @@ export const appliedNutrition = {
     {
       id: "m2",
       number: 2,
-      section: "Section 1",
+      section: "Foundations",
       title: "Protein — The Building Block",
       description: "What protein does, sources, requirements, and quality metrics.",
       lessons: [
@@ -334,7 +358,7 @@ export const appliedNutrition = {
     {
       id: "m3",
       number: 3,
-      section: "Section 1",
+      section: "Foundations",
       title: "Carbohydrates & Fats — Beyond the Fear",
       description: "Carbs (simple/complex, GI), fats (saturated/unsaturated debate), seed oils, and fibre.",
       lessons: [
@@ -491,7 +515,7 @@ export const appliedNutrition = {
     {
       id: "m4",
       number: 4,
-      section: "Section 1",
+      section: "Foundations",
       title: "Micronutrients & Deficiency",
       description: "Vitamins (fat/water-soluble), common mineral deficiencies, signs, and food vs supplements.",
       lessons: [
@@ -664,7 +688,7 @@ export const appliedNutrition = {
     {
       id: "m5",
       number: 5,
-      section: "Section 1",
+      section: "Foundations",
       title: "Hydration & Everyday Physiology",
       description: "How much water you need, electrolytes, and signs of under-hydration people miss.",
       lessons: [
@@ -798,7 +822,7 @@ export const appliedNutrition = {
     {
       id: "m6",
       number: 6,
-      section: "Section 2",
+      section: "Performance & Supplementation",
       title: "Performance & Supplementation",
       description: "Creatine, protein supplements, other popular supplements, and nutrient timing.",
       lessons: [
@@ -993,6 +1017,30 @@ export const appliedNutrition = {
         },
         {
           id: "6.5",
+          kind: "case-study",
+          title: "Case Study: Should Maya Take Creatine?",
+          blocks: [
+            { type: "p", text: "**Maya, 17, plays competitive volleyball.** She trains 5 days a week, wants more explosive power for jumping, and has read that creatine 'makes you bulky' and 'damages your kidneys'. Her older brother does a loading phase of 20g/day for a week, then drops to 5g/day. Maya isn't sure what to believe, or whether the loading phase even matters." },
+            { type: "h", text: "What the loading phase actually does" },
+            { type: "diagram", kind: "loadingPhaseChart" },
+            { type: "p", text: "The loading phase isn't a different substance or a bigger effect — it's the same daily maintenance amount, just front-loaded to saturate muscle creatine stores faster (roughly a week, instead of 3-4 weeks at a flat 3-5g/day the whole way)." },
+            { type: "h", text: "Applying what you already know from this module" },
+            { type: "list", items: [
+              "From **Lesson 6.1-6.2**: creatine is one of the most-studied supplements in sports nutrition, with strong evidence for power and strength gains.",
+              "From **Lesson 6.3**: the 'bulky' fear is usually about early water retention inside muscle cells, not fat gain — and it's not universal.",
+              "From **Lesson 6.4**: it's not recommended for people with existing kidney disease, but is not shown to harm kidney function in healthy people.",
+            ]},
+            { type: "callout", text: "Notice this case doesn't have one single 'correct' verdict handed to you — the goal is applying Module 6's evidence to Maya's specific situation (a healthy teenage athlete, no kidney issues, wanting a specific performance outcome), not reciting a rule." },
+            { type: "check", q: "Is Maya's brother's description of creatine 'loading' accurate?", options: ["No, loading is a completely different, more dangerous substance", "Yes — loading is the same substance, just a higher daily dose for about a week to saturate stores faster", "No, loading has no effect on anything", "Yes, but only for people over 18"], correct: 1, explain: "Loading is simply a temporarily higher daily dose of the same creatine, to reach saturation faster than the slower flat-dose approach." },
+          ],
+          quiz: [
+            { q: "Based on what Module 6 has covered so far, is creatine an unreasonable choice for a healthy teenage athlete like Maya with no kidney issues?", options: ["Yes, it should never be considered for anyone under 18 regardless of health", "No — the evidence base doesn't show harm to kidney function in healthy people, though checking with a doctor/dietitian first is still sensible for a minor", "Yes, because loading always causes permanent bulk gain", "No, because loading is required for it to work at all"], correct: 1 },
+            { type: "truefalse", q: "Skipping the loading phase entirely means creatine won't work for Maya.", correct: false, explain: "Loading only changes how fast muscle stores saturate — a flat lower daily dose reaches the same saturation eventually, just over roughly 3-4 weeks instead of about one." },
+            { type: "type", q: "Fill in the blank: the main population creatine is specifically not recommended for, based on Lesson 6.4, is people with existing ______ disease.", accepted: ["kidney", "renal"], explain: "Lesson 6.4 covers kidney (renal) disease as the key population where creatine isn't recommended." },
+          ],
+        },
+        {
+          id: "6.6",
           title: "Protein Supplementation",
           blocks: [
             { type: "p", text: "Protein powders are popular, but do you actually need one? Let's examine the evidence and practical considerations." },
@@ -1031,7 +1079,7 @@ export const appliedNutrition = {
           ],
         },
         {
-          id: "6.6",
+          id: "6.7",
           title: "Other Popular Supplements",
           blocks: [
             { type: "p", text: "Beyond creatine and protein, many supplements claim performance or health benefits. Let's separate evidence from hype." },
@@ -1083,7 +1131,7 @@ export const appliedNutrition = {
           ],
         },
         {
-          id: "6.7",
+          id: "6.8",
           title: "Nutrient Timing",
           blocks: [
             { type: "p", text: "Does meal timing matter for muscle growth? Is the 'anabolic window' real? Let's examine the evidence." },
@@ -1125,7 +1173,7 @@ export const appliedNutrition = {
     {
       id: "m7",
       number: 7,
-      section: "Section 3",
+      section: "Alternative & Naturopathic Approaches",
       title: "The Alternative & Naturopathic Lens",
       description: "Naturopathic nutrition, gut health, elimination diets, adaptogens, fasting, and food quality.",
       lessons: [
@@ -1398,7 +1446,7 @@ export const appliedNutrition = {
     {
       id: "m8",
       number: 8,
-      section: "Section 4",
+      section: "Putting It Into Practice",
       title: "Applying It",
       description: "Reading nutrition science critically, debunking myths, everyday application, and capstone.",
       lessons: [
