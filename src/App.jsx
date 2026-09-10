@@ -16,6 +16,7 @@ function CourseIcon({ name, ...props }) {
 }
 import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress } from "./storage.js";
+import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
 
 // Picks readable text (white vs. navy) based on the background colour's brightness —
 // used anywhere a dynamic/vibrant background hosts text or an icon.
@@ -152,6 +153,8 @@ function TermCard({ term, definition, accent, ink }) {
    ============================================================ */
 
 function Diagram({ kind, accent, ink }) {
+  const Registered = DIAGRAM_REGISTRY[kind];
+  if (Registered) return <Registered accent={accent} ink={ink} />;
   if (kind === "hypnogram") {
     const points = "0,20 20,20 40,90 60,90 80,140 110,140 130,90 150,60 170,20 200,20 220,90 240,120 270,80 290,40 310,20 340,20 360,80 380,60 410,10 440,10";
     return (
@@ -548,6 +551,11 @@ function LessonView({ course, module, lesson, onBack, completed, lastScore, next
       {step.type === "read" && (
         <div className="lp-pop">
           <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: course.accent, marginBottom: 6 }}>LESSON {lesson.id}</p>
+          {lesson.kind && lesson.kind !== "standard" && (
+            <span style={{ display: "inline-block", fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", borderRadius: 999, padding: "3px 10px", marginBottom: 10, color: lesson.kind === "gate" ? "#B5620F" : "#6A4FC2", background: lesson.kind === "gate" ? "#FDF1E4" : "#F1EEFC" }}>
+              {lesson.kind === "gate" ? "Quick Primer" : lesson.kind === "case-study" ? "Case Study" : lesson.kind}
+            </span>
+          )}
           <h1 style={{ fontSize: 25, fontWeight: 800, color: course.ink, lineHeight: 1.3, marginBottom: 18, fontFamily: FONT_DISPLAY }}>{lesson.title}</h1>
           {step.blocks.map((b, i) => {
             if (b.type === "term") return <TermCard key={i} term={b.term} definition={b.definition} accent={course.accent} ink={course.ink} />;

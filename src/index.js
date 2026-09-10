@@ -1,10 +1,19 @@
-// Registers every course the platform offers.
-// To add a new course: create src/courses/yourCourse.js exporting a course
-// object shaped like sleepScience.js, then add it here.
-import { sleepScience } from "./sleepScience.js";
-import { boostPerformance } from "./boostPerformance.js";
-import { studyLearning } from "./studyskills.js";
-import { chemistry } from "./chemistryoutcomes.js";
-import { psychologyLevel1 } from "./psychology.js";
-import { appliedNutrition } from "./appliednutrition.js";
-export const COURSES = [sleepScience, boostPerformance, studyLearning, chemistry, psychologyLevel1, appliedNutrition];
+// Diagram registry — the actual mechanism for "how do new diagrams get added."
+// A lesson's content just references a diagram by id:
+//   { type: "diagram", kind: "evidencePyramid" }
+// To add a new diagram: build a new file in this folder (copy the shape of
+// EvidencePyramid.jsx or LoadingPhaseChart.jsx — static SVG, or animated/
+// interactive SVG+CSS/JS, both work the same way), then add one import +
+// one line below. Nothing else in the app ever needs to change.
+//
+// This registry is checked first. The two original built-in diagrams
+// ("hypnogram" and "cycle", used by Sleep Science) still live directly in
+// App.jsx's Diagram() function, untouched — this registry only adds new
+// kinds on top, it doesn't replace anything existing.
+import EvidencePyramid from "./EvidencePyramid.jsx";
+import LoadingPhaseChart from "./LoadingPhaseChart.jsx";
+
+export const DIAGRAM_REGISTRY = {
+  evidencePyramid: EvidencePyramid,
+  loadingPhaseChart: LoadingPhaseChart,
+};
