@@ -200,6 +200,21 @@ export const appliedNutrition = {
             { type: "truefalse", q: "RDAs represent optimal intake for health and performance.", correct: false, explain: "RDAs are MINIMUMS to prevent deficiency — not optimal intakes for health, performance, or longevity." },
           ],
         },
+        {
+          id: "1.6",
+          title: "Module 1 Review: Foundations",
+          blocks: [
+            { type: "p", text: "A quick cumulative check across everything in this module — macros vs micros, what calories do and don't tell you, the two nutrition lenses, reading claims critically, and how guidelines actually get made." },
+          ],
+          quiz: [
+            { q: "Which macronutrient has the highest thermic effect (burns the most calories just digesting it)?", options: ["Carbohydrates", "Fat", "Protein", "Water"], correct: 2 },
+            { type: "truefalse", q: "A single new study is generally strong enough to overturn an existing scientific consensus.", correct: false, explain: "As covered in the evidence hierarchy, a lone study sits lower than a systematic review or meta-analysis — real shifts usually need replication." },
+            { q: "Where do mainstream and naturopathic nutrition actually agree, per Lesson 1.3?", options: ["Saturated fat is always bad", "Eat more vegetables", "Grains are essential", "Calories don't matter"], correct: 1 },
+            { q: "What does the RDA for a nutrient actually represent?", options: ["Optimal intake for performance", "The minimum to prevent deficiency in most of the population", "The maximum safe intake", "The average intake worldwide"], correct: 1 },
+            { type: "multi", q: "Which of these do calories alone NOT tell you, per Lesson 1.2?", options: ["Energy content", "Nutrient density", "Hormonal impact", "Satiety"], correct: [1, 2, 3], explain: "Calories DO tell you energy content — that's the one thing they measure. They don't tell you nutrient density, hormonal impact, or satiety." },
+            { type: "type", q: "Fill in the blank: the strongest type of evidence on the hierarchy from Lesson 1.4 is a systematic review or ______-analysis.", accepted: ["meta"], explain: "A meta-analysis pools many studies together, which is why it sits at the top of the evidence hierarchy." },
+          ],
+        },
       ],
     },
     {
@@ -351,6 +366,21 @@ export const appliedNutrition = {
             { q: "What does PDCAAS measure?", options: ["Calories", "Protein quality", "Fat content", "Carb content"], correct: 1 },
             { q: "Which protein source has highest quality?", options: ["Beans", "Rice", "Whey", "Nuts"], correct: 2 },
             { type: "multi", q: "What reduces plant protein digestibility?", options: ["Lectins", "Phytates", "Vitamin C", "Tannins"], correct: [0, 1, 3], explain: "Lectins, phytates, and tannins are anti-nutrients that reduce protein digestibility. Vitamin C does not." },
+          ],
+        },
+        {
+          id: "2.5",
+          title: "Module 2 Review: Protein",
+          blocks: [
+            { type: "p", text: "Pulling together what protein actually does, complete vs incomplete sources, how much you really need, and what makes a protein source high quality." },
+          ],
+          quiz: [
+            { q: "How many amino acids are classified as essential (must come from food)?", options: ["5", "9", "11", "20"], correct: 1 },
+            { type: "truefalse", q: "Your body can store protein the way it stores fat or glycogen.", correct: false, explain: "Protein is the one macronutrient your body can't meaningfully store — it needs a steady supply throughout the day." },
+            { q: "Which of these is one of the few complete plant proteins?", options: ["Rice", "Quinoa", "Wheat", "Corn"], correct: 1 },
+            { q: "What does the 0.8 g/kg protein RDA actually represent?", options: ["Optimal intake for muscle building", "The minimum to prevent deficiency in a sedentary adult", "The requirement for athletes", "The maximum safe intake"], correct: 1 },
+            { q: "Which amino acid is the primary trigger for muscle protein synthesis?", options: ["Lysine", "Leucine", "Methionine", "Tryptophan"], correct: 1 },
+            { type: "type", q: "Fill in the blank: your body pools amino acids over roughly 24 hours, so you need variety across the ______, not necessarily at every single meal.", accepted: ["day", "whole day"], explain: "This is why 'combining' proteins at every meal isn't actually necessary — just eat varied sources across the day." },
           ],
         },
       ],
@@ -508,6 +538,21 @@ export const appliedNutrition = {
             { q: "What do gut bacteria produce from fibre?", options: ["Glucose", "Short-chain fatty acids", "Protein", "Cholesterol"], correct: 1 },
             { q: "Which food is high in prebiotic fibre?", options: ["White rice", "Garlic", "Chicken", "Butter"], correct: 1 },
             { type: "multi", q: "What are benefits of fibre?", options: ["Gut health", "Blood sugar control", "Increased inflammation", "Satiety"], correct: [0, 1, 3], explain: "Fibre improves gut health, blood sugar control, and satiety. It REDUCES inflammation." },
+          ],
+        },
+        {
+          id: "3.5",
+          title: "Module 3 Review: Carbohydrates & Fats",
+          blocks: [
+            { type: "p", text: "A cumulative check on glycemic index and load, the saturated/unsaturated fat debate, seed oils, and fibre." },
+          ],
+          quiz: [
+            { q: "What does Glycemic Load account for that Glycemic Index alone does not?", options: ["Fibre content", "Serving size", "Fat content", "Cooking method"], correct: 1 },
+            { type: "truefalse", q: "Being a 'complex' carbohydrate always means a lower glycemic index than a 'simple' one.", correct: false, explain: "Not always — white potato (complex) can spike blood sugar more than table sugar (simple)." },
+            { q: "Which ratio is closest to the ideal omega-3 to omega-6 balance covered in Lesson 3.2?", options: ["1:1 to 1:4", "1:20", "1:50", "1:100"], correct: 0 },
+            { q: "What happens to seed oils when they're heated?", options: ["They become healthier", "They oxidise and form harmful compounds", "They turn into saturated fat", "Nothing changes"], correct: 1 },
+            { q: "Which type of fibre dissolves in water and forms a gel?", options: ["Insoluble", "Soluble", "Resistant starch only", "None of these"], correct: 1 },
+            { type: "multi", q: "Which are genuine benefits of dietary fibre, per Lesson 3.4?", options: ["Gut health", "Blood sugar control", "Increased inflammation", "Satiety"], correct: [0, 1, 3], explain: "Fibre reduces inflammation via SCFAs like butyrate — it doesn't increase it." },
           ],
         },
       ],
@@ -683,6 +728,21 @@ export const appliedNutrition = {
             { type: "truefalse", q: "Whole-food supplements are generally preferred over isolated nutrients.", correct: true, explain: "Whole-food supplements with co-factors are often preferred over isolated synthetic nutrients." },
           ],
         },
+        {
+          id: "4.5",
+          title: "Module 4 Review: Micronutrients & Deficiency",
+          blocks: [
+            { type: "p", text: "Reviewing fat- vs water-soluble vitamins, the minerals people most commonly fall short on, how deficiencies are actually tested, and when supplements make sense." },
+          ],
+          quiz: [
+            { q: "Which vitamins are fat-soluble and can accumulate to toxic levels if over-supplemented?", options: ["B and C", "A, D, E, K", "All vitamins", "None"], correct: 1 },
+            { q: "Which mineral is involved in 300+ enzyme reactions and is deficient in roughly half of Western populations?", options: ["Iron", "Zinc", "Magnesium", "Calcium"], correct: 2 },
+            { q: "Which test best measures actual iron STORES, rather than just current blood iron?", options: ["Serum iron", "Ferritin", "Haemoglobin", "White blood cell count"], correct: 1 },
+            { type: "truefalse", q: "Serum B12 is the most reliable marker of true B12 status.", correct: false, explain: "Serum B12 can be misleading — MMA and homocysteine are more accurate functional markers." },
+            { q: "Which nutrient pair works synergistically, per Lesson 4.4?", options: ["Calcium and iron", "Vitamin D and K2", "Zinc and copper", "Magnesium and sodium"], correct: 1 },
+            { type: "type", q: "Fill in the blank: unlike vitamins, minerals cannot be made by the body and must always come from food or ______.", accepted: ["supplements", "supplementation"], explain: "Minerals are inorganic elements the body can't synthesise — food or supplements are the only sources." },
+          ],
+        },
       ],
     },
     {
@@ -815,6 +875,21 @@ export const appliedNutrition = {
             { q: "Which is a sign of under-hydration?", options: ["Frequent urination", "Constipation", "Loose stools", "Clear urine"], correct: 1 },
             { q: "What does the skin turgor test measure?", options: ["Skin colour", "Hydration status", "Sun damage", "Allergies"], correct: 1 },
             { type: "multi", q: "Which are signs of dehydration?", options: ["Fatigue", "Headache", "Water retention", "Increased energy"], correct: [0, 1, 2], explain: "Fatigue, headache, and paradoxically water retention are signs of dehydration." },
+          ],
+        },
+        {
+          id: "5.4",
+          title: "Module 5 Review: Hydration & Everyday Physiology",
+          blocks: [
+            { type: "p", text: "Checking how much water you actually need, when plain water isn't enough, and the subtler signs of under-hydration people tend to miss." },
+          ],
+          quiz: [
+            { q: "What urine colour generally indicates good hydration?", options: ["Clear", "Pale yellow", "Dark yellow", "Brown"], correct: 1 },
+            { q: "What causes hyponatraemia?", options: ["Too much sodium", "Drinking too much plain water", "Too little water", "Too much potassium"], correct: 1 },
+            { q: "Which electrolyte is primarily lost in sweat during prolonged exercise?", options: ["Calcium", "Sodium", "Iron", "Zinc"], correct: 1 },
+            { type: "truefalse", q: "Thirst is a reliable early warning sign that appears before any meaningful dehydration has occurred.", correct: false, explain: "By the time you feel thirsty, you're already around 1-2% dehydrated — thirst lags behind actual need." },
+            { type: "multi", q: "Which of these are commonly MISSED signs of under-hydration, per Lesson 5.3?", options: ["Brain fog", "Constipation", "Increased energy", "Water retention"], correct: [0, 1, 3], explain: "Paradoxically, chronic under-hydration can cause the body to retain water, not just increased energy — which isn't a sign of dehydration at all." },
+            { q: "Roughly how much extra water should you add per hour of intense exercise?", options: ["None", "100 mL", "500-1000 mL", "5 L"], correct: 2 },
           ],
         },
       ],
@@ -1168,6 +1243,23 @@ export const appliedNutrition = {
             { type: "truefalse", q: "You MUST eat within 30 minutes post-workout or you lose gains.", correct: false, explain: "No — the anabolic window is 3–5 hours. What you ate pre-workout also matters." },
           ],
         },
+        {
+          id: "6.9",
+          title: "Module 6 Review: Performance & Supplementation",
+          blocks: [
+            { type: "p", text: "The big one — creatine's mechanism and evidence, loading myths, safety, the Maya case study, protein powders, other popular supplements, and nutrient timing, all mixed together." },
+          ],
+          quiz: [
+            { q: "What energy system does creatine primarily support?", options: ["Aerobic", "ATP-PCr", "Fat oxidation", "Glycolytic"], correct: 1 },
+            { type: "truefalse", q: "Loading creatine (20 g/day for about a week) is required for it to eventually work.", correct: false, explain: "Loading just reaches saturation faster. A flat 3-5 g/day works fine too, just over roughly 3-4 weeks instead of about one." },
+            { q: "In a healthy person, an elevated creatinine reading from creatine supplementation indicates:", options: ["Kidney damage", "A normal, harmless increase in a waste product", "Liver damage", "Dehydration"], correct: 1 },
+            { q: "In the Maya case study, what's the main population creatine is specifically not recommended for?", options: ["People over 30", "People with kidney disease", "People who lift weights", "Vegetarians"], correct: 1 },
+            { q: "Roughly how much protein should a good-quality protein powder contain per scoop?", options: ["5-10 g", "10-15 g", "20-30 g", "40-50 g"], correct: 2 },
+            { q: "What is the effective caffeine dose range for a genuine performance benefit?", options: ["1-2 mg/kg", "3-6 mg/kg", "10-15 mg/kg", "20+ mg/kg"], correct: 1 },
+            { q: "How long does the research actually suggest the 'anabolic window' is?", options: ["30 minutes", "1 hour", "3-5 hours", "24 hours"], correct: 2 },
+            { type: "multi", q: "Which of these have strong evidence behind them, per Lesson 6.7?", options: ["Omega-3", "Vitamin D (if deficient)", "Fat burners", "Magnesium (if deficient)"], correct: [0, 1, 3], explain: "Omega-3 and magnesium/vitamin D (when deficient) are well-supported. Most fat burners are underdosed caffeine plus fillers." },
+          ],
+        },
       ],
     },
     {
@@ -1441,6 +1533,22 @@ export const appliedNutrition = {
             { type: "multi", q: "Which are characteristics of ultra-processed food?", options: ["5+ ingredients", "Artificial additives", "Whole ingredients", "High nutrient density"], correct: [0, 1], explain: "Ultra-processed foods have 5+ ingredients and artificial additives. They are NOT whole or nutrient-dense." },
           ],
         },
+        {
+          id: "7.7",
+          title: "Module 7 Review: The Alternative & Naturopathic Lens",
+          blocks: [
+            { type: "p", text: "Reviewing naturopathic nutrition's core ideas, the gut microbiome, elimination diets, adaptogens, fasting, and food quality beyond the label." },
+          ],
+          quiz: [
+            { q: "What does naturopathic nutrition emphasise over isolated supplements?", options: ["Calorie counting", "Whole foods", "Population averages", "Macro tracking"], correct: 1 },
+            { q: "Roughly what percentage of the body's serotonin is produced in the gut?", options: ["10%", "50%", "90%", "100%"], correct: 2 },
+            { q: "What is the actual gold-standard method for identifying a food sensitivity?", options: ["An IgG blood test", "A skin prick test", "An elimination diet with systematic reintroduction", "A blood glucose test"], correct: 2 },
+            { q: "Which adaptogen has the strongest evidence for reducing cortisol and anxiety?", options: ["Rhodiola", "Ashwagandha", "Ginseng", "Maca"], correct: 1 },
+            { type: "truefalse", q: "Autophagy during fasting peaks at around 12 hours.", correct: false, explain: "Autophagy increases during fasting but peaks around 48-72 hours, based on animal studies — 12 hours is just the beginning." },
+            { q: "What does NOVA Group 4 refer to?", options: ["Organic food", "Ultra-processed food", "Whole food", "Fermented food"], correct: 1 },
+            { type: "multi", q: "Which groups should NOT fast, per Lesson 7.5?", options: ["Pregnant/breastfeeding people", "Healthy sedentary adults", "Underweight individuals", "People with a history of disordered eating"], correct: [0, 2, 3], explain: "Healthy sedentary adults are generally fine to fast — the others carry real risks." },
+          ],
+        },
       ],
     },
     {
@@ -1639,6 +1747,24 @@ export const appliedNutrition = {
             { q: "How often should you review your nutrition plan?", options: ["Daily", "Weekly", "Monthly", "Yearly"], correct: 2 },
             { q: "What is the 80/20 rule for?", options: ["Macros", "Consistency vs flexibility", "Protein intake", "Meal timing"], correct: 1 },
             { type: "truefalse", q: "You should adjust your nutrition based on personal experience, not just evidence.", correct: true, explain: "Yes — evidence is the starting point, but bio-individuality means you may need to adjust based on how YOU feel and respond." },
+          ],
+        },
+        {
+          id: "8.5",
+          title: "Final Review: The Whole Course",
+          blocks: [
+            { type: "p", text: "One question pulled from each module — a genuinely interleaved final check across everything from Foundations through to reading nutrition science critically, rather than a repeat of any single module." },
+          ],
+          quiz: [
+            { q: "(Module 1) What does the RDA for a nutrient actually represent?", options: ["Optimal intake", "The minimum to prevent deficiency"], correct: 1 },
+            { q: "(Module 2) Which amino acid is the primary trigger for muscle protein synthesis?", options: ["Lysine", "Leucine", "Methionine", "Tryptophan"], correct: 1 },
+            { q: "(Module 3) Which fat type is solid at room temperature?", options: ["Monounsaturated", "Polyunsaturated", "Saturated", "Omega-3"], correct: 2 },
+            { q: "(Module 4) Which vitamins can accumulate to toxic levels if over-supplemented?", options: ["Water-soluble", "Fat-soluble", "Both equally", "Neither"], correct: 1 },
+            { q: "(Module 5) What urine colour generally indicates good hydration?", options: ["Clear", "Pale yellow", "Dark yellow", "Brown"], correct: 1 },
+            { q: "(Module 6) What is the standard, well-supported daily maintenance dose of creatine?", options: ["1 g", "3-5 g", "10 g", "20 g"], correct: 1 },
+            { q: "(Module 7) What is the actual gold-standard method for identifying a food sensitivity?", options: ["An IgG blood test", "An elimination diet with reintroduction", "A skin prick test", "Guessing"], correct: 1 },
+            { type: "truefalse", q: "(Module 8) One single study is generally enough to overturn an existing scientific consensus.", correct: false, explain: "A lone study sits lower on the evidence hierarchy than a systematic review or meta-analysis of many studies." },
+            { type: "type", q: "(Module 1) Fill in the blank: RDAs are minimums to prevent ______, not optimal targets for health or performance.", accepted: ["deficiency"], explain: "This is the single most-repeated idea across this course's Foundations module." },
           ],
         },
       ],
