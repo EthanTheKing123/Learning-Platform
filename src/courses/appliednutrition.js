@@ -897,7 +897,7 @@ export const appliedNutrition = {
     {
       id: "m6",
       number: 6,
-      section: "Performance & Supplementation",
+      section: "Beyond the Basics",
       title: "Performance & Supplementation",
       description: "Creatine, protein supplements, other popular supplements, and nutrient timing.",
       lessons: [
@@ -1265,7 +1265,7 @@ export const appliedNutrition = {
     {
       id: "m7",
       number: 7,
-      section: "Alternative & Naturopathic Approaches",
+      section: "Beyond the Basics",
       title: "The Alternative & Naturopathic Lens",
       description: "Naturopathic nutrition, gut health, elimination diets, adaptogens, fasting, and food quality.",
       lessons: [
@@ -1554,7 +1554,7 @@ export const appliedNutrition = {
     {
       id: "m8",
       number: 8,
-      section: "Putting It Into Practice",
+      section: "Beyond the Basics",
       title: "Applying It",
       description: "Reading nutrition science critically, debunking myths, everyday application, and capstone.",
       lessons: [
