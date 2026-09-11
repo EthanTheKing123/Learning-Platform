@@ -606,6 +606,26 @@ function StarRow({ percent }) {
     </div>
   );
 }
+// Gold / silver / bronze — same 3/2/1 tiering as StarRow above, just with a
+// distinct colour per tier instead of one flat orange, and small enough to
+// sit inline in a lesson row.
+const STAR_TIER_COLORS = { 3: "#E9C13B", 2: "#AEB4C2", 1: "#C88A55" };
+function starsForScore(score, total) {
+  if (!total) return 0;
+  const percent = (score / total) * 100;
+  return percent >= 90 ? 3 : percent >= 66 ? 2 : percent > 0 ? 1 : 0;
+}
+function MiniStars({ count, size = 13 }) {
+  if (!count) return null;
+  const color = STAR_TIER_COLORS[count] || "#E7E5EE";
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      {[0, 1, 2].map((i) => (
+        <Star key={i} size={size} color={i < count ? color : "#E7E5EE"} fill={i < count ? color : "#E7E5EE"} />
+      ))}
+    </div>
+  );
+}
 
 function LessonView({ course, module, lesson, onBack, completed, lastScore, nextLesson, onMarkComplete, onGoModules, onGoHome, onGoNext }) {
   const [mode, setMode] = useState(completed ? "recap" : "lesson");
@@ -787,7 +807,7 @@ function LessonView({ course, module, lesson, onBack, completed, lastScore, next
    MODULE VIEW — list of lessons, sequential unlock
    ============================================================ */
 
-function ModuleView({ course, module, completedLessons, onBack, onOpenLesson }) {
+function ModuleView({ course, module, completedLessons, scores, onBack, onOpenLesson }) {
   return (
     <div className="lp-shell-wide">
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
@@ -846,7 +866,10 @@ function ModuleView({ course, module, completedLessons, onBack, onOpenLesson }) 
                   <p style={{ fontSize: 15.5, color: isLocked ? "#A3A0B4" : course.ink, margin: 0, fontWeight: 700 }}>{lesson.title}</p>
                 </div>
               </div>
-              {!isLocked && <ChevronRight size={18} color="#B0AEC4" />}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {isDone && scores?.[lesson.id] && <MiniStars count={starsForScore(scores[lesson.id].score, scores[lesson.id].total)} />}
+                {!isLocked && <ChevronRight size={18} color="#B0AEC4" />}
+              </div>
             </button>
           );
         })}
@@ -1548,7 +1571,10 @@ function TopicCourses({ topic, courses, progressMap, onOpenDetail, onBack }) {
 }
 
 function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpenLibrary, onOpenReviewHub }) {
-  const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
+  const totalStars = Object.values(progressMap).reduce(
+    (n, p) => n + Object.values(p.scores || {}).reduce((s, entry) => s + starsForScore(entry.score, entry.total), 0),
+    0
+  );
   const enrolledCourses = courses.filter((c) => progressMap[c.id]?.enrolled);
   return (
     <div className="lp-shell-wide">
@@ -1840,6 +1866,7 @@ export default function LearningPlatform({ user }) {
           course={view.course}
           module={view.module}
           completedLessons={progressMap[view.course.id]?.completedLessons || []}
+          scores={progressMap[view.course.id]?.scores || {}}
           onBack={() => setView({ screen: "course", course: view.course })}
           onOpenLesson={(l) => setView({ screen: "lesson", course: view.course, module: view.module, lesson: l })}
         />
