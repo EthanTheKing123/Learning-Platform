@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain } from "lucide-react";
+import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain } from "lucide-react";
 
 // Maps the short string each course sets as `icon` (e.g. "brain") to the
 // actual lucide component. Add a new line here whenever a new course wants
@@ -73,7 +73,7 @@ function getDueReviews(courses, progressMap) {
     course.modules.forEach((module) => {
       module.lessons.forEach((lesson) => {
         const entry = review[lesson.id];
-        if (entry && entry.nextDue <= today) due.push({ course, module, lesson, entry });
+        if (entry && entry.nextDue <= today) due.push({ course, module, lesson });
       });
     });
   });
@@ -591,15 +591,32 @@ function LessonView({ course, module, lesson, onBack, completed, lastScore, next
   const quizStartIndex = steps.findIndex((s) => s.type === "quiz");
   const [stepIndex, setStepIndex] = useState(0);
   const [quizResults, setQuizResults] = useState({});
+  const [stepOutcomes, setStepOutcomes] = useState({}); // { [stepIndex]: true|false } — drives the progress-bar colour
   const markedRef = useRef(false);
 
   const step = steps[stepIndex];
-  const stepColor = (t) => (t === "read" ? "#2E7FD1" : t === "check" ? "#D8465F" : t === "quiz" ? "#1C9450" : "#D9791F");
+
+  // Blue while reading or not-yet-answered; once a question step is answered,
+  // it reflects whether that specific answer was right (green) or wrong (red).
+  const segmentColor = (s, i) => {
+    if (i > stepIndex) return "#EDEDF5";
+    if (s.type === "read") return "#2E7FD1";
+    if (stepOutcomes[i] === true) return "#1C9450";
+    if (stepOutcomes[i] === false) return "#D8465F";
+    return "#2E7FD1";
+  };
 
   const goNext = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
+
+  const handleCheckAnswered = (correct) => {
+    setStepOutcomes((prev) => ({ ...prev, [stepIndex]: correct }));
+    goNext();
+  };
 
   const handleQuizAnswered = (qIndex, correct) => {
     setQuizResults((prev) => ({ ...prev, [qIndex]: correct }));
+    setStepOutcomes((prev) => ({ ...prev, [stepIndex]: correct }));
     goNext();
   };
 
@@ -657,15 +674,22 @@ function LessonView({ course, module, lesson, onBack, completed, lastScore, next
 
   return (
     <div className="lp-shell-narrow">
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0, fontWeight: 700 }}>
-        <ArrowLeft size={16} /> Module {module.number}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", padding: 0, fontWeight: 700 }}>
+          <ArrowLeft size={16} /> Module {module.number}
+        </button>
+        {step.type !== "results" && stepIndex > 0 && (
+          <button onClick={goBack} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: "#8A8FA0", fontSize: 13, cursor: "pointer", padding: 0, fontWeight: 700 }}>
+            <ChevronLeft size={16} /> Back
+          </button>
+        )}
+      </div>
 
       {step.type !== "results" && (
         <>
           <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
             {steps.slice(0, -1).map((s, i) => (
-              <div key={i} style={{ flex: 1, height: 9, borderRadius: 5, background: i <= stepIndex ? stepColor(s.type) : "#EDEDF5", transition: "background 0.2s" }} />
+              <div key={i} style={{ flex: 1, height: 9, borderRadius: 5, background: segmentColor(s, i), transition: "background 0.2s" }} />
             ))}
           </div>
           <p style={{ fontSize: 12, color: "#B0AEC4", marginBottom: 20, fontWeight: 700 }}>{Math.min(stepIndex + 1, steps.length - 1)} of {steps.length - 1}</p>
@@ -695,7 +719,7 @@ function LessonView({ course, module, lesson, onBack, completed, lastScore, next
       {step.type === "check" && (
         <div className="lp-pop" key={`check-${stepIndex}`}>
           <p style={{ fontSize: 12.5, fontWeight: 800, color: "#D8465F", letterSpacing: 0.5, marginBottom: 12 }}>QUICK PAUSE</p>
-          <Question data={step.block} onAnswered={goNext} />
+          <Question data={step.block} onAnswered={handleCheckAnswered} />
         </div>
       )}
 
@@ -1009,13 +1033,9 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
   }
 
   const current = items[index];
-  const box = current.entry?.box || 1;
   return (
     <div className="lp-shell-narrow">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-        <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", margin: 0 }}>DAILY REVIEW · {index + 1} of {items.length}</p>
-        <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: BOX_COLORS[box - 1], borderRadius: 999, padding: "3px 10px" }}>Box {box}</span>
-      </div>
+      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>DAILY REVIEW · {index + 1} of {items.length}</p>
       <p style={{ fontSize: 12.5, color: "#B0AEC4", fontWeight: 700, marginBottom: 16 }}>{current.course.title} · Lesson {current.lesson.id} — {current.lesson.title}</p>
       <Question
         key={current.course.id + current.lesson.id}
@@ -1035,23 +1055,15 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
    ============================================================
    The one-tap "reviews due today" card on the Hub still jumps straight
    into today's session unchanged. This is the fuller destination: start
-   today's review, browse what's tracked (grouped by course, view-only —
-   box progress can ONLY move through an actual daily review, never by
-   manually picking a lesson here), and links into the analytics and
-   explainer pages below. */
-function ReviewHub({ courses, progressMap, dueCount, onStartReview, onOpenAnalytics, onOpenExplainer, onBack }) {
-  const [expanded, setExpanded] = useState({}); // { [courseId]: bool }
+   today's review, browse and practice ANY tracked lesson early (not just
+   what's due — practicing early still advances its box, same as a real
+   review), and links into the analytics and explainer pages below. */
+function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLesson, onOpenAnalytics, onOpenExplainer, onBack }) {
   const allItems = getAllReviewItems(courses, progressMap);
   const byBox = [1, 2, 3, 4, 5].map((b) => allItems.filter((i) => i.entry.box === b).length);
   const maxBox = Math.max(1, ...byBox);
   const today = todayStr();
-
-  const byCourse = {};
-  allItems.forEach((item) => {
-    if (!byCourse[item.course.id]) byCourse[item.course.id] = { course: item.course, items: [] };
-    byCourse[item.course.id].items.push(item);
-  });
-  const courseGroups = Object.values(byCourse).sort((a, b) => a.course.title.localeCompare(b.course.title));
+  const sorted = [...allItems].sort((a, b) => a.entry.nextDue.localeCompare(b.entry.nextDue));
 
   return (
     <div className="lp-shell-wide">
@@ -1104,47 +1116,25 @@ function ReviewHub({ courses, progressMap, dueCount, onStartReview, onOpenAnalyt
       </div>
 
       <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>ALL LESSONS IN REVIEW ({allItems.length})</p>
-      {courseGroups.length === 0 ? (
+      {sorted.length === 0 ? (
         <p style={{ fontSize: 14, color: "#B0AEC4", fontWeight: 600 }}>Nothing here yet — finish a whole module and it'll show up for review here.</p>
       ) : (
-        courseGroups.map((group) => {
-          const isOpen = !!expanded[group.course.id];
-          const items = [...group.items].sort((a, b) => a.entry.nextDue.localeCompare(b.entry.nextDue));
-          return (
-            <div key={group.course.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, marginBottom: 10, overflow: "hidden" }}>
-              <button
-                onClick={() => setExpanded((e) => ({ ...e, [group.course.id]: !isOpen }))}
-                className="lp-btn"
-                style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: group.course.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <CourseIcon name={group.course.icon} size={16} color={textOn(group.course.accent)} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 14.5, fontWeight: 800, color: "#17213A", margin: 0 }}>{group.course.title}</p>
-                    <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{group.items.length} lesson{group.items.length === 1 ? "" : "s"} in review</p>
-                  </div>
-                </div>
-                <ChevronRight size={18} color="#B0AEC4" style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }} />
-              </button>
-              {isOpen && (
-                <div style={{ borderTop: "1px solid #EAEAF2", padding: "4px 16px 12px" }}>
-                  {items.map((item) => (
-                    <div key={item.lesson.id} style={{ padding: "10px 0", borderBottom: "1px solid #F4F4F7" }}>
-                      <p style={{ fontSize: 13.5, fontWeight: 700, color: "#17213A", margin: 0 }}>{item.lesson.id} — {item.lesson.title}</p>
-                      <p style={{ fontSize: 11.5, color: "#8A8FA0", margin: "2px 0 0", fontWeight: 700 }}>
-                        <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
-                        {" · "}{item.entry.nextDue <= today ? "Due now" : `Due ${item.entry.nextDue}`}
-                        {" · "}Reviewed {item.entry.timesReviewed || 0}×
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+        sorted.map((item) => (
+          <div key={item.course.id + item.lesson.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#fff", border: "2px solid #EAEAF2", borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 800, color: "#A3A0B4", margin: 0 }}>{item.course.title} · Lesson {item.lesson.id}</p>
+              <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: "2px 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.lesson.title}</p>
+              <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>
+                <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
+                {" · "}{item.entry.nextDue <= today ? "Due now" : `Due ${item.entry.nextDue}`}
+                {" · "}Reviewed {item.entry.timesReviewed || 0}×
+              </p>
             </div>
-          );
-        })
+            <button onClick={() => onPracticeLesson(item.course, item.module, item.lesson)} className="lp-btn" style={{ flexShrink: 0, padding: "9px 16px", borderRadius: 11, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+              Practice
+            </button>
+          </div>
+        ))
       )}
     </div>
   );
@@ -1328,7 +1318,6 @@ function ReviewExplainer({ onBack }) {
    touched. Curating real values per course is a natural follow-up. */
 function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, onBack }) {
   const enrolled = !!progressMap[course.id]?.enrolled;
-  const isLocked = !!course.locked && !progressMap[course.id]?.unlocked;
   const lessonCount = course.modules.reduce((n, m) => n + m.lessons.length, 0);
   const estMinutes = course.estimatedMinutes || lessonCount * 8; // ~8 min/lesson heuristic when not curated
   const estLabel = estMinutes < 60 ? `${estMinutes} min` : `${(estMinutes / 60).toFixed(estMinutes % 60 === 0 ? 0 : 1)} hrs`;
@@ -1393,14 +1382,7 @@ function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, on
         </>
       )}
 
-      {isLocked ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#F6F7FB", border: "2px solid #EAEAF2", borderRadius: 14, padding: "14px 16px", marginTop: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#C7C5D4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Lock size={16} color="#fff" />
-          </div>
-          <p style={{ fontSize: 13.5, color: "#5A5F6E", margin: 0, fontWeight: 700, lineHeight: 1.5 }}>This course is locked. Enter its code from the Explore Courses screen to unlock it.</p>
-        </div>
-      ) : enrolled ? (
+      {enrolled ? (
         <button onClick={() => onOpenCourse(course)} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 15.5, cursor: "pointer", fontFamily: FONT_DISPLAY, marginTop: 12 }}>
           Continue learning
         </button>
@@ -1416,25 +1398,9 @@ function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, on
 /* ============================================================
    LIBRARY (browse & enroll)
    ============================================================ */
-function Library({ courses, progressMap, onOpenDetail, onRedeemCode, onBack }) {
+function Library({ courses, progressMap, onOpenDetail, onBack }) {
   const [code, setCode] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
-  const [codeOk, setCodeOk] = useState(null); // true | false | null — controls message color
-
-  const handleRedeem = () => {
-    const result = onRedeemCode(code);
-    if (result.status === "success") {
-      setCodeMsg(`Unlocked "${result.courseTitle}" — it's been added to your home screen.`);
-      setCodeOk(true);
-      setCode("");
-    } else if (result.status === "already") {
-      setCodeMsg(`"${result.courseTitle}" is already unlocked.`);
-      setCodeOk(true);
-    } else {
-      setCodeMsg("That code doesn't match anything — double-check and try again.");
-      setCodeOk(false);
-    }
-  };
 
   return (
     <div className="lp-shell-wide">
@@ -1446,9 +1412,8 @@ function Library({ courses, progressMap, onOpenDetail, onRedeemCode, onBack }) {
       <p style={{ fontSize: 14.5, color: "#8A8FA0", fontWeight: 600, marginBottom: 24 }}>Browse everything on the platform and enroll in what you want to learn.</p>
 
       {/* Code entry — same visual treatment as the sign-in screen's inputs
-          (AuthGate.jsx). A course becomes gated by this just by setting
-          `locked: true` and `code: "SOMECODE"` in its own data file —
-          see redeemCode in the root component for the matching logic. */}
+          (AuthGate.jsx). Not wired to anything yet: this is UI only, for
+          future private courses accessed via a code. */}
       <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 18, padding: 20, marginBottom: 28 }}>
         <p style={{ fontSize: 13, fontWeight: 800, color: "#17213A", margin: "0 0 10px" }}>Have a course code?</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -1456,52 +1421,60 @@ function Library({ courses, progressMap, onOpenDetail, onRedeemCode, onBack }) {
             type="text"
             placeholder="Enter code"
             value={code}
-            onChange={(e) => { setCode(e.target.value); setCodeMsg(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && code.trim()) handleRedeem(); }}
+            onChange={(e) => setCode(e.target.value)}
             style={{ flex: 1, minWidth: 160, boxSizing: "border-box", padding: "13px 16px", borderRadius: 14, border: "2px solid #EAEAF2", fontSize: 15, outline: "none", fontWeight: 600 }}
           />
           <button
-            onClick={handleRedeem}
-            disabled={!code.trim()}
+            onClick={() => setCodeMsg("Course codes aren't live yet — check back soon.")}
             className="lp-btn"
-            style={{ padding: "13px 22px", borderRadius: 14, border: "none", background: code.trim() ? "#2E7FD1" : "#D7D5E0", color: "#fff", fontWeight: 800, fontSize: 15, cursor: code.trim() ? "pointer" : "default", boxShadow: code.trim() ? "0 4px 0 #1F5C99" : "none", fontFamily: FONT_DISPLAY, whiteSpace: "nowrap" }}
+            style={{ padding: "13px 22px", borderRadius: 14, border: "none", background: "#2E7FD1", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 0 #1F5C99", fontFamily: FONT_DISPLAY, whiteSpace: "nowrap" }}
           >
             Redeem
           </button>
         </div>
-        {codeMsg && <p style={{ fontSize: 13, color: codeOk === false ? "#D8465F" : "#166A3C", fontWeight: 700, marginTop: 10, marginBottom: 0 }}>{codeMsg}</p>}
+        {codeMsg && <p style={{ fontSize: 13, color: "#8A8FA0", fontWeight: 600, marginTop: 10, marginBottom: 0 }}>{codeMsg}</p>}
       </div>
 
-      <div className="lp-grid">
-        {courses.map((c) => {
-          const enrolled = !!progressMap[c.id]?.enrolled;
-          const isLocked = !!c.locked && !progressMap[c.id]?.unlocked;
-          const lessonCount = c.modules.reduce((n, m) => n + m.lessons.length, 0);
+      {(() => {
+        const TOPIC_ORDER = ["Health", "Psychology", "Sleep", "Reddam Curriculum", "Study Tips"];
+        const topics = [...TOPIC_ORDER, ...new Set(courses.map((c) => c.topic || "Other").filter((t) => !TOPIC_ORDER.includes(t)))];
+        return topics.map((topic) => {
+          const inTopic = courses.filter((c) => (c.topic || "Other") === topic);
+          if (inTopic.length === 0) return null;
           return (
-            <button key={c.id} onClick={() => onOpenDetail(c)} className="lp-btn" style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer", opacity: isLocked ? 0.82 : 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 14, background: isLocked ? "#C7C5D4" : c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {isLocked ? <Lock size={20} color="#fff" /> : <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />}
-                </div>
-                <div>
-                  <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>
-                  <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{isLocked ? "Locked — requires a course code" : c.tagline}</p>
-                </div>
+            <div key={topic} style={{ marginBottom: 30 }}>
+              <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.4, color: "#A3A0B4", marginBottom: 12, textTransform: "uppercase" }}>{topic}</p>
+              <div className="lp-grid">
+                {inTopic.map((c) => {
+                  const enrolled = !!progressMap[c.id]?.enrolled;
+                  const lessonCount = c.modules.reduce((n, m) => n + m.lessons.length, 0);
+                  return (
+                    <button key={c.id} onClick={() => onOpenDetail(c)} className="lp-btn" style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                        <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>
+                          <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{c.tagline}</p>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <p style={{ fontSize: 13, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
+                        {enrolled ? (
+                          <span style={{ fontSize: 12, fontWeight: 800, color: "#166A3C", background: "#E4F5EA", borderRadius: 999, padding: "4px 11px" }}>Enrolled ✓</span>
+                        ) : (
+                          <span style={{ fontSize: 12, fontWeight: 800, color: "#8A8FA0", background: "#F4F4F7", borderRadius: 999, padding: "4px 11px" }}>View details</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <p style={{ fontSize: 13, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
-                {isLocked ? (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 800, color: "#5A5F6E", background: "#F4F4F7", borderRadius: 999, padding: "4px 11px" }}><Lock size={11} /> Locked</span>
-                ) : enrolled ? (
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "#166A3C", background: "#E4F5EA", borderRadius: 999, padding: "4px 11px" }}>Enrolled ✓</span>
-                ) : (
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "#8A8FA0", background: "#F4F4F7", borderRadius: 999, padding: "4px 11px" }}>View details</span>
-                )}
-              </div>
-            </button>
+            </div>
           );
-        })}
-      </div>
+        });
+      })()}
     </div>
   );
 }
@@ -1695,36 +1668,12 @@ export default function LearningPlatform({ user }) {
     });
   }, []);
 
-  // Checks an entered code against every course's own `code` field (case
-  // and whitespace insensitive). A course only needs `locked: true` and
-  // `code: "SOMECODE"` set in its data file to be gated this way — nothing
-  // else to wire up per course. A match sets `unlocked: true` AND
-  // `enrolled: true` on that course's existing progress object (same
-  // storage mechanism as everything else here), so redeeming a code both
-  // unlocks it and drops it straight onto the person's Hub.
-  // Returns a result object so the UI can show the right message:
-  //   { status: "success", courseTitle } | { status: "already" } | { status: "invalid" }
-  const redeemCode = useCallback((enteredCode) => {
-    const normalized = enteredCode.trim().toLowerCase();
-    if (!normalized) return { status: "invalid" };
-    const match = visibleCourses.find((c) => c.locked && c.code && c.code.trim().toLowerCase() === normalized);
-    if (!match) return { status: "invalid" };
-    if (progressMap[match.id]?.unlocked) return { status: "already", courseTitle: match.title };
-    setProgressMap((prev) => {
-      const cur = prev[match.id] || { completedLessons: [], scores: {}, review: {} };
-      const next = { ...cur, unlocked: true, enrolled: true };
-      saveProgress(match.id, next);
-      return { ...prev, [match.id]: next };
-    });
-    return { status: "success", courseTitle: match.title };
-  }, [visibleCourses, progressMap]);
-
   if (!loaded) {
     return <div style={{ minHeight: 400, display: "flex", alignItems: "center", justifyContent: "center", color: "#B0AEC4", fontSize: 14, fontWeight: 700 }}>Loading…</div>;
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: FONT_BODY }}>
+    <div style={{ minHeight: "100vh", background: "#FDFCF9", fontFamily: FONT_BODY }}>
       {/* Rendered once here at the true root, which never unmounts as you
           navigate between screens — this is what actually fixes the
           "modules/lessons go to the edge, no spacing" bug. GLOBAL_STYLE
@@ -1753,7 +1702,6 @@ export default function LearningPlatform({ user }) {
           courses={visibleCourses}
           progressMap={progressMap}
           onOpenDetail={(c) => setView({ screen: "courseDetail", course: c })}
-          onRedeemCode={redeemCode}
           onBack={() => setView({ screen: "hub" })}
         />
       )}
@@ -1773,6 +1721,7 @@ export default function LearningPlatform({ user }) {
           progressMap={progressMap}
           dueCount={getDueReviews(visibleCourses, progressMap).length}
           onStartReview={() => setView({ screen: "review", returnTo: "reviewHub" })}
+          onPracticeLesson={(course, module, lesson) => setView({ screen: "review", forcedList: [{ course, module, lesson }], returnTo: "reviewHub" })}
           onOpenAnalytics={() => setView({ screen: "reviewAnalytics" })}
           onOpenExplainer={() => setView({ screen: "reviewExplainer" })}
           onBack={() => setView({ screen: "hub" })}
@@ -1786,7 +1735,7 @@ export default function LearningPlatform({ user }) {
       )}
       {view.screen === "review" && (
         <ReviewSession
-          dueList={getDueReviews(visibleCourses, progressMap)}
+          dueList={view.forcedList || getDueReviews(visibleCourses, progressMap)}
           onAnswer={recordReview}
           onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
           onExit={() => setView({ screen: view.returnTo || "hub" })}
