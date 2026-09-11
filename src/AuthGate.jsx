@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { GraduationCap, LogOut } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import { auth } from "./firebase.js";
 import {
   onAuthStateChanged,
@@ -125,17 +125,9 @@ export default function AuthGate({ children }) {
   }
   if (!user) return <SignInScreen />;
 
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px 0" }}>
-        <button
-          onClick={() => signOut(auth)}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
-        >
-          <LogOut size={14} /> Sign out{user.email ? ` (${user.email})` : ""}
-        </button>
-      </div>
-      {React.cloneElement(children, { user })}
-    </div>
-  );
+  // The old top-right "Sign out" text link now lives inside the app itself
+  // as a real Profile page (avatar in the corner -> stats/badges -> sign
+  // out button at the bottom). AuthGate's only job is auth: hand the signed
+  // -in user and a sign-out function down, and get out of the way.
+  return React.cloneElement(children, { user, onSignOut: () => signOut(auth) });
 }
