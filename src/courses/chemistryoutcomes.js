@@ -18,6 +18,7 @@ export const chemistry = {
   id: "chemistry-fundamentals",
   title: "Chemistry Fundamentals",
   tagline: "From atoms and ions to reactions, bonding, and nuclear chemistry.",
+  topic: "Reddam Curriculum",
   icon: "flask",
   accent: "#D14F2E",
   ink: "#1A1A2E",
