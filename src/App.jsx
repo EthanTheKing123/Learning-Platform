@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain } from "lucide-react";
+import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain, Apple, FlaskConical, Heart, School, Lightbulb } from "lucide-react";
 
 // Maps the short string each course sets as `icon` (e.g. "brain") to the
 // actual lucide component. Add a new line here whenever a new course wants
@@ -9,11 +9,22 @@ const COURSE_ICONS = {
   moon: Moon,
   dumbbell: Dumbbell,
   brain: Brain,
+  apple: Apple,
+  flask: FlaskConical,
 };
 function CourseIcon({ name, ...props }) {
   const Icon = COURSE_ICONS[name] || BookOpen; // falls back to BookOpen if a course forgets to set one
   return <Icon {...props} />;
 }
+// Visual identity for each topic bubble on the Explore page — independent of
+// any single course's own icon/colour, since a topic can hold several courses.
+const TOPIC_META = {
+  Health: { icon: Heart, accent: "#5BA838" },
+  Psychology: { icon: Brain, accent: "#7B2D9E" },
+  Sleep: { icon: Moon, accent: "#2E7FD1" },
+  "Reddam Curriculum": { icon: School, accent: "#D14F2E" },
+  "Study Tips": { icon: Lightbulb, accent: "#D9791F" },
+};
 import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress } from "./storage.js";
 import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
@@ -40,6 +51,17 @@ function addDays(dateStr, days) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+// Review dates are stored as calendar days (no time-of-day), but "now" has
+// full precision — so we can still give a genuine hour countdown by treating
+// midnight of the due date as the target moment. Falls back to the date
+// itself once it's more than ~2 days out, since "in 240h" isn't readable.
+function dueInLabel(nextDue, today) {
+  if (nextDue <= today) return "Due now";
+  const target = new Date(nextDue + "T00:00:00");
+  const diffHours = Math.max(1, Math.round((target - new Date()) / 36e5));
+  if (diffHours < 48) return `Available in ${diffHours}h`;
+  return `Due ${nextDue}`;
 }
 function newReviewEntry() {
   const today = todayStr();
@@ -1095,7 +1117,11 @@ function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLe
           <div>
             <p style={{ fontSize: 12.5, fontWeight: 800, color: dueCount > 0 ? "#8A6A00" : "#8A8FA0", margin: 0, letterSpacing: 0.3 }}>TODAY</p>
             <p style={{ fontSize: 17, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>
-              {dueCount > 0 ? `${dueCount} review${dueCount === 1 ? "" : "s"} due — start now` : "Nothing due today"}
+              {dueCount > 0
+                ? `${dueCount} review${dueCount === 1 ? "" : "s"} due — start now`
+                : sorted[0]
+                ? `Nothing due — next review ${dueInLabel(sorted[0].entry.nextDue, today).toLowerCase()}`
+                : "Nothing due today"}
             </p>
           </div>
         </div>
@@ -1126,7 +1152,7 @@ function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLe
               <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: "2px 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.lesson.title}</p>
               <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>
                 <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
-                {" · "}{item.entry.nextDue <= today ? "Due now" : `Due ${item.entry.nextDue}`}
+                {" · "}{dueInLabel(item.entry.nextDue, today)}
                 {" · "}Reviewed {item.entry.timesReviewed || 0}×
               </p>
             </div>
@@ -1398,7 +1424,7 @@ function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, on
 /* ============================================================
    LIBRARY (browse & enroll)
    ============================================================ */
-function Library({ courses, progressMap, onOpenDetail, onBack }) {
+function Library({ courses, progressMap, onOpenDetail, onOpenTopic, onBack }) {
   const [code, setCode] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
 
@@ -1438,43 +1464,85 @@ function Library({ courses, progressMap, onOpenDetail, onBack }) {
       {(() => {
         const TOPIC_ORDER = ["Health", "Psychology", "Sleep", "Reddam Curriculum", "Study Tips"];
         const topics = [...TOPIC_ORDER, ...new Set(courses.map((c) => c.topic || "Other").filter((t) => !TOPIC_ORDER.includes(t)))];
-        return topics.map((topic) => {
-          const inTopic = courses.filter((c) => (c.topic || "Other") === topic);
-          if (inTopic.length === 0) return null;
-          return (
-            <div key={topic} style={{ marginBottom: 30 }}>
-              <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.4, color: "#A3A0B4", marginBottom: 12, textTransform: "uppercase" }}>{topic}</p>
-              <div className="lp-grid">
-                {inTopic.map((c) => {
-                  const enrolled = !!progressMap[c.id]?.enrolled;
-                  const lessonCount = c.modules.reduce((n, m) => n + m.lessons.length, 0);
-                  return (
-                    <button key={c.id} onClick={() => onOpenDetail(c)} className="lp-btn" style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                        <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
-                        </div>
-                        <div>
-                          <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>
-                          <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{c.tagline}</p>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <p style={{ fontSize: 13, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
-                        {enrolled ? (
-                          <span style={{ fontSize: 12, fontWeight: 800, color: "#166A3C", background: "#E4F5EA", borderRadius: 999, padding: "4px 11px" }}>Enrolled ✓</span>
-                        ) : (
-                          <span style={{ fontSize: 12, fontWeight: 800, color: "#8A8FA0", background: "#F4F4F7", borderRadius: 999, padding: "4px 11px" }}>View details</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        });
+        return (
+          <div className="lp-grid">
+            {topics.map((topic) => {
+              const inTopic = courses.filter((c) => (c.topic || "Other") === topic);
+              if (inTopic.length === 0) return null;
+              const meta = TOPIC_META[topic] || { icon: BookOpen, accent: "#5A5870" };
+              const TopicIcon = meta.icon;
+              return (
+                <button key={topic} onClick={() => onOpenTopic(topic)} className="lp-btn" style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 16, background: meta.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <TopicIcon size={24} color={textOn(meta.accent)} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 19, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>{topic}</p>
+                      <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{inTopic.length} course{inTopic.length === 1 ? "" : "s"}</p>
+                    </div>
+                    <ChevronRight size={20} color="#B0AEC4" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        );
       })()}
+    </div>
+  );
+}
+
+/* ============================================================
+   TOPIC COURSES (courses within one Explore topic bubble)
+   ============================================================ */
+function TopicCourses({ topic, courses, progressMap, onOpenDetail, onBack }) {
+  const inTopic = courses.filter((c) => (c.topic || "Other") === topic);
+  const meta = TOPIC_META[topic] || { icon: BookOpen, accent: "#5A5870" };
+  const TopicIcon = meta.icon;
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Explore
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+        <div style={{ width: 46, height: 46, borderRadius: 14, background: meta.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <TopicIcon size={22} color={textOn(meta.accent)} />
+        </div>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>{topic}</h1>
+          <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{inTopic.length} course{inTopic.length === 1 ? "" : "s"}</p>
+        </div>
+      </div>
+
+      <div className="lp-grid">
+        {inTopic.map((c) => {
+          const enrolled = !!progressMap[c.id]?.enrolled;
+          const lessonCount = c.modules.reduce((n, m) => n + m.lessons.length, 0);
+          return (
+            <button key={c.id} onClick={() => onOpenDetail(c)} className="lp-btn" style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>
+                  <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{c.tagline}</p>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontSize: 13, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
+                {enrolled ? (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#166A3C", background: "#E4F5EA", borderRadius: 999, padding: "4px 11px" }}>Enrolled ✓</span>
+                ) : (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#8A8FA0", background: "#F4F4F7", borderRadius: 999, padding: "4px 11px" }}>View details</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1673,7 +1741,7 @@ export default function LearningPlatform({ user }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FDFCF9", fontFamily: FONT_BODY }}>
+    <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: FONT_BODY }}>
       {/* Rendered once here at the true root, which never unmounts as you
           navigate between screens — this is what actually fixes the
           "modules/lessons go to the edge, no spacing" bug. GLOBAL_STYLE
@@ -1702,7 +1770,17 @@ export default function LearningPlatform({ user }) {
           courses={visibleCourses}
           progressMap={progressMap}
           onOpenDetail={(c) => setView({ screen: "courseDetail", course: c })}
+          onOpenTopic={(topic) => setView({ screen: "libraryTopic", topic })}
           onBack={() => setView({ screen: "hub" })}
+        />
+      )}
+      {view.screen === "libraryTopic" && (
+        <TopicCourses
+          topic={view.topic}
+          courses={visibleCourses}
+          progressMap={progressMap}
+          onOpenDetail={(c) => setView({ screen: "courseDetail", course: c })}
+          onBack={() => setView({ screen: "library" })}
         />
       )}
       {view.screen === "courseDetail" && (
