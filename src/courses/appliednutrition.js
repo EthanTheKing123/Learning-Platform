@@ -19,6 +19,8 @@ export const appliedNutrition = {
   title: "Applied Nutrition",
   tagline: "From macros and creatine to naturopathic and alternative approaches.",
   icon: "apple",
+  locked: true,
+  code: "NUTRITIONCOURSE",
   accent: "#5BA838",
   ink: "#1A1A2E",
   modules: [
