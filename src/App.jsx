@@ -31,6 +31,7 @@ import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
    saves to Firestore — storage.js itself needed zero changes, since
    loadProgress/saveProgress just persist whatever shape they're given. */
 const REVIEW_BOX_DAYS = [1, 3, 7, 14, 30]; // index 0 = Box 1
+const BOX_COLORS = ["#D8465F", "#D9791F", "#D4A017", "#2E7FD1", "#166A3C"]; // Box 1 (red, urgent) -> Box 5 (green, mastered)
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -42,15 +43,17 @@ function addDays(dateStr, days) {
 }
 function newReviewEntry() {
   const today = todayStr();
-  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]) };
+  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]), timesReviewed: 0, correctCount: 0 };
 }
 function advanceReviewEntry(entry, wasCorrect) {
   const today = todayStr();
+  const timesReviewed = (entry?.timesReviewed || 0) + 1;
+  const correctCount = (entry?.correctCount || 0) + (wasCorrect ? 1 : 0);
   if (wasCorrect) {
     const nextBox = Math.min((entry?.box || 1) + 1, REVIEW_BOX_DAYS.length);
-    return { box: nextBox, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[nextBox - 1]) };
+    return { box: nextBox, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[nextBox - 1]), timesReviewed, correctCount };
   }
-  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]) };
+  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]), timesReviewed, correctCount };
 }
 // Every due lesson contributes ONE question to the single combined daily
 // review quiz. Which question is picked shifts by the day (not random on
@@ -75,6 +78,22 @@ function getDueReviews(courses, progressMap) {
     });
   });
   return due;
+}
+// Every lesson currently tracked by spaced repetition, due or not — powers
+// the Review Hub's browse list (so someone can practice ahead of schedule)
+// and the analytics page (box distribution, times-reviewed, accuracy).
+function getAllReviewItems(courses, progressMap) {
+  const items = [];
+  courses.forEach((course) => {
+    const review = progressMap[course.id]?.review || {};
+    course.modules.forEach((module) => {
+      module.lessons.forEach((lesson) => {
+        const entry = review[lesson.id];
+        if (entry) items.push({ course, module, lesson, entry });
+      });
+    });
+  });
+  return items;
 }
 // Runs once per load (see the progress-loading useEffect below). Modules
 // completed BEFORE the review system existed never had a chance to trigger
@@ -1008,9 +1027,354 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
 }
 
 /* ============================================================
+   REVIEW HUB — dedicated spaced-revision page
+   ============================================================
+   The one-tap "reviews due today" card on the Hub still jumps straight
+   into today's session unchanged. This is the fuller destination: start
+   today's review, browse and practice ANY tracked lesson early (not just
+   what's due — practicing early still advances its box, same as a real
+   review), and links into the analytics and explainer pages below. */
+function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLesson, onOpenAnalytics, onOpenExplainer, onBack }) {
+  const allItems = getAllReviewItems(courses, progressMap);
+  const byBox = [1, 2, 3, 4, 5].map((b) => allItems.filter((i) => i.entry.box === b).length);
+  const maxBox = Math.max(1, ...byBox);
+  const today = todayStr();
+  const sorted = [...allItems].sort((a, b) => a.entry.nextDue.localeCompare(b.entry.nextDue));
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Home
+      </button>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14, marginBottom: 22 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#17213A", margin: "0 0 6px", fontFamily: FONT_DISPLAY }}>Spaced Revision</h1>
+          <p style={{ fontSize: 14.5, color: "#8A8FA0", fontWeight: 600, margin: 0, maxWidth: 480 }}>Short, spaced check-ins that beat cramming — one combined quiz pulled from everything you've completed.</p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={onOpenExplainer} className="lp-btn" style={{ padding: "10px 16px", borderRadius: 12, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>How this works</button>
+          <button onClick={onOpenAnalytics} className="lp-btn" style={{ padding: "10px 16px", borderRadius: 12, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>Your progress</button>
+        </div>
+      </div>
+
+      <button
+        onClick={onStartReview}
+        disabled={dueCount === 0}
+        className="lp-btn"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: dueCount > 0 ? "#FFF7E0" : "#F6F7FB", border: `2px solid ${dueCount > 0 ? "#FDECC8" : "#EAEAF2"}`, borderRadius: 18, padding: "18px 22px", marginBottom: 26, cursor: dueCount > 0 ? "pointer" : "default", textAlign: "left" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 13, background: dueCount > 0 ? "#D9791F" : "#C7C5D4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <RotateCw size={20} color="#fff" />
+          </div>
+          <div>
+            <p style={{ fontSize: 12.5, fontWeight: 800, color: dueCount > 0 ? "#8A6A00" : "#8A8FA0", margin: 0, letterSpacing: 0.3 }}>TODAY</p>
+            <p style={{ fontSize: 17, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>
+              {dueCount > 0 ? `${dueCount} review${dueCount === 1 ? "" : "s"} due — start now` : "Nothing due today"}
+            </p>
+          </div>
+        </div>
+        {dueCount > 0 && <ChevronRight size={22} color="#D9791F" />}
+      </button>
+
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>WHERE YOUR LESSONS SIT</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 30 }}>
+        {byBox.map((count, i) => (
+          <div key={i} style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ height: 56, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+              <div style={{ width: "70%", height: Math.max(6, (count / maxBox) * 56), background: BOX_COLORS[i], borderRadius: 6, transition: "height 0.3s ease" }} />
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 800, color: "#17213A", margin: "6px 0 0" }}>{count}</p>
+            <p style={{ fontSize: 11, color: "#A3A0B4", margin: 0, fontWeight: 700 }}>Box {i + 1}</p>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>ALL LESSONS IN REVIEW ({allItems.length})</p>
+      {sorted.length === 0 ? (
+        <p style={{ fontSize: 14, color: "#B0AEC4", fontWeight: 600 }}>Nothing here yet — finish a whole module and it'll show up for review here.</p>
+      ) : (
+        sorted.map((item) => (
+          <div key={item.course.id + item.lesson.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#fff", border: "2px solid #EAEAF2", borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 800, color: "#A3A0B4", margin: 0 }}>{item.course.title} · Lesson {item.lesson.id}</p>
+              <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: "2px 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.lesson.title}</p>
+              <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>
+                <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
+                {" · "}{item.entry.nextDue <= today ? "Due now" : `Due ${item.entry.nextDue}`}
+                {" · "}Reviewed {item.entry.timesReviewed || 0}×
+              </p>
+            </div>
+            <button onClick={() => onPracticeLesson(item.course, item.module, item.lesson)} className="lp-btn" style={{ flexShrink: 0, padding: "9px 16px", borderRadius: 11, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+              Practice
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, value }) {
+  return (
+    <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: "16px 18px" }}>
+      <p style={{ fontSize: 11.5, fontWeight: 800, color: "#A3A0B4", letterSpacing: 0.3, margin: "0 0 6px" }}>{label.toUpperCase()}</p>
+      <p style={{ fontSize: 24, fontWeight: 800, color: "#17213A", margin: 0, fontFamily: FONT_DISPLAY }}>{value}</p>
+    </div>
+  );
+}
+
+/* ============================================================
+   REVIEW ANALYTICS — long-term progress
+   ============================================================ */
+function ReviewAnalytics({ courses, progressMap, onBack }) {
+  const allItems = getAllReviewItems(courses, progressMap);
+  const byBox = [1, 2, 3, 4, 5].map((b) => allItems.filter((i) => i.entry.box === b).length);
+  const maxBox = Math.max(1, ...byBox);
+  const totalReviews = allItems.reduce((n, i) => n + (i.entry.timesReviewed || 0), 0);
+  const totalCorrect = allItems.reduce((n, i) => n + (i.entry.correctCount || 0), 0);
+  const accuracy = totalReviews > 0 ? Math.round((totalCorrect / totalReviews) * 100) : null;
+  const sorted = [...allItems].sort((a, b) => (b.entry.timesReviewed || 0) - (a.entry.timesReviewed || 0));
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Spaced Revision
+      </button>
+      <h1 style={{ fontSize: 26, fontWeight: 800, color: "#17213A", margin: "0 0 22px", fontFamily: FONT_DISPLAY }}>Your Progress</h1>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 28 }}>
+        <StatCard label="Lessons tracked" value={allItems.length} />
+        <StatCard label="Total reviews done" value={totalReviews} />
+        <StatCard label="Accuracy" value={accuracy !== null ? `${accuracy}%` : "—"} />
+        <StatCard label="Mastered (Box 5)" value={byBox[4]} />
+      </div>
+
+      <div style={{ background: "#F6F7FB", borderRadius: 18, padding: "20px 16px", marginBottom: 28 }}>
+        <p style={{ fontSize: 13.5, fontWeight: 800, color: "#17213A", margin: "0 0 14px" }}>Where your lessons sit right now</p>
+        <svg viewBox="0 0 460 155" style={{ width: "100%", height: "auto" }}>
+          {byBox.map((count, i) => {
+            const barHeight = (count / maxBox) * 100;
+            const x = 25 + i * 88;
+            const y = 120 - barHeight;
+            return (
+              <g key={i}>
+                <rect x={x} y={y} width={52} height={Math.max(4, barHeight)} rx={8} fill={BOX_COLORS[i]} />
+                <text x={x + 26} y={y - 8} fontSize="13" fontWeight="800" fill="#17213A" textAnchor="middle">{count}</text>
+                <text x={x + 26} y={138} fontSize="11" fill="#8A8FA0" textAnchor="middle">Box {i + 1}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>REVIEW HISTORY BY LESSON</p>
+      {sorted.length === 0 ? (
+        <p style={{ fontSize: 14, color: "#B0AEC4", fontWeight: 600 }}>Nothing to show yet — complete a module to start building review history.</p>
+      ) : (
+        sorted.map((item) => {
+          const acc = item.entry.timesReviewed ? Math.round((item.entry.correctCount / item.entry.timesReviewed) * 100) : null;
+          return (
+            <div key={item.course.id + item.lesson.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
+              <p style={{ fontSize: 12, fontWeight: 800, color: "#A3A0B4", margin: 0 }}>{item.course.title} · {item.lesson.id}</p>
+              <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: "2px 0 4px" }}>{item.lesson.title}</p>
+              <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>
+                <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
+                {" · "}Reviewed {item.entry.timesReviewed || 0}×{acc !== null ? ` · ${acc}% correct` : ""}
+              </p>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   REVIEW EXPLAINER — how it works + the research behind it
+   ============================================================ */
+function ForgettingCurveDiagram() {
+  // Three curves: no review (fast decay), reviewed once (slower decay,
+  // starts from a boosted retention point), reviewed multiple times
+  // (flattest of all) — the core visual argument for spacing.
+  const curve = (boost, decay) => {
+    const pts = [];
+    for (let x = 0; x <= 200; x += 10) {
+      const y = 100 - boost * Math.exp(-x / decay);
+      pts.push(`${x + 20},${120 - y}`);
+    }
+    return pts.join(" ");
+  };
+  return (
+    <div style={{ margin: "14px 0 22px", background: "#F6F7FB", borderRadius: 16, padding: "16px 12px" }}>
+      <svg viewBox="0 0 460 150" style={{ width: "100%", height: "auto" }}>
+        <polyline points={curve(95, 28)} fill="none" stroke="#D8465F" strokeWidth="3" />
+        <polyline points={curve(95, 55)} fill="none" stroke="#D9791F" strokeWidth="3" />
+        <polyline points={curve(95, 110)} fill="none" stroke="#166A3C" strokeWidth="3" />
+        <text x="230" y="140" fontSize="11" fill="#8A8FA0" textAnchor="middle">Time since learning</text>
+      </svg>
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "#D8465F" }}>● Never reviewed</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "#D9791F" }}>● Reviewed once</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "#166A3C" }}>● Reviewed several times</span>
+      </div>
+    </div>
+  );
+}
+function BoxFlowDiagram() {
+  const boxes = [1, 2, 3, 4, 5];
+  const w = 76, gap = 18, startX = 12;
+  return (
+    <div style={{ margin: "14px 0 22px", background: "#F6F7FB", borderRadius: 16, padding: "16px 12px" }}>
+      <svg viewBox="0 0 460 130" style={{ width: "100%", height: "auto" }}>
+        {boxes.map((b, i) => {
+          const x = startX + i * (w + gap);
+          return (
+            <g key={b}>
+              <rect x={x} y="20" width={w} height="56" rx="12" fill={BOX_COLORS[i]} />
+              <text x={x + w / 2} y="52" fontSize="15" fontWeight="800" fill="#fff" textAnchor="middle">Box {b}</text>
+              <text x={x + w / 2} y="92" fontSize="11" fill="#8A8FA0" textAnchor="middle">{REVIEW_BOX_DAYS[i]}d</text>
+              {i < boxes.length - 1 && (
+                <text x={x + w + gap / 2} y="52" fontSize="16" fill="#166A3C" textAnchor="middle">→</text>
+              )}
+            </g>
+          );
+        })}
+        <text x="230" y="118" fontSize="11" fill="#D8465F" textAnchor="middle">Any wrong answer sends that lesson straight back to Box 1</text>
+      </svg>
+    </div>
+  );
+}
+function ReviewExplainer({ onBack }) {
+  const H2 = ({ children }) => <h2 style={{ fontSize: 18, fontWeight: 800, color: "#17213A", margin: "26px 0 10px", fontFamily: FONT_DISPLAY }}>{children}</h2>;
+  const P = ({ children }) => <p style={{ fontSize: 15, color: "#3A3850", lineHeight: 1.65, margin: "0 0 14px", fontWeight: 500 }}>{children}</p>;
+  return (
+    <div className="lp-shell-narrow">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Spaced Revision
+      </button>
+      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", margin: "0 0 6px" }}>SPACED REVISION</p>
+      <h1 style={{ fontSize: 26, fontWeight: 800, color: "#17213A", margin: "0 0 18px", fontFamily: FONT_DISPLAY }}>How This Actually Works</h1>
+
+      <P>Almost everything you learn fades fast unless you revisit it — and revisiting it at the right moment is far more efficient than re-reading everything from scratch or cramming it all in at once. That's the entire idea behind this page.</P>
+
+      <H2>The problem: forgetting is fast</H2>
+      <P>In the 1880s, psychologist Hermann Ebbinghaus tested his own memory repeatedly and mapped what's now called the <strong>forgetting curve</strong> — without any review, most new information fades within a day or two. But each time something is successfully recalled, that decay slows down. Review it enough times at the right intervals, and the curve flattens out almost completely.</P>
+      <ForgettingCurveDiagram />
+
+      <H2>How this app implements it — the Leitner box system</H2>
+      <P>This uses a simplified version of a method devised by German scientist Sebastian Leitner in the 1970s. Every lesson you've completed a full module of gets placed in <strong>Box 1</strong>. Answer its review question correctly and it moves up a box — meaning a longer wait until it's due again. Get it wrong, and it drops straight back to Box 1, due again tomorrow.</P>
+      <BoxFlowDiagram />
+      <P>The gap grows the more consistently you get something right — 1 day, then 3, then 7, 14, and finally 30 — which is deliberately front-loaded: new or shaky material gets checked on almost immediately, while things you clearly know well get checked far less often, so your time goes toward what actually still needs it.</P>
+
+      <H2>Why questions, not just re-reading</H2>
+      <P>Each review pulls an actual question from that lesson's quiz — not a summary to skim. Actively trying to recall an answer (even getting it wrong) builds stronger memory than passively re-reading ever does, a finding usually called the <strong>testing effect</strong>. Getting it wrong isn't a failure of the system — it's the system correctly noticing you need another pass sooner, and it shows you the explanation immediately.</P>
+
+      <H2>The research behind this</H2>
+      <P>This isn't a made-up scheme — it's built on some of the most consistently replicated findings in cognitive psychology:</P>
+      <ul style={{ margin: "0 0 20px", paddingLeft: 20 }}>
+        <li style={{ fontSize: 14.5, color: "#3A3850", lineHeight: 1.7, fontWeight: 500 }}><strong>Ebbinghaus (1885)</strong> — the original forgetting-curve experiments, still the reference point for how retention decays over time.</li>
+        <li style={{ fontSize: 14.5, color: "#3A3850", lineHeight: 1.7, fontWeight: 500 }}><strong>Cepeda et al. (2006)</strong> — a meta-analysis spanning over 300 studies confirming the "spacing effect": distributed review consistently beats massed study (cramming) for long-term retention.</li>
+        <li style={{ fontSize: 14.5, color: "#3A3850", lineHeight: 1.7, fontWeight: 500 }}><strong>Roediger & Karpicke (2006)</strong> — landmark studies establishing the testing effect: actively recalling information produces stronger long-term memory than re-studying it.</li>
+        <li style={{ fontSize: 14.5, color: "#3A3850", lineHeight: 1.7, fontWeight: 500 }}><strong>Leitner (1972)</strong> — <em>So lernt man lernen</em> ("How to Learn to Learn"), the original box-based flashcard system this page's implementation is a simplified version of.</li>
+      </ul>
+      <P>None of this requires the full complexity of an app like Anki — a 5-box system captures most of the real-world benefit with a much simpler rule to follow: right answer, wait longer; wrong answer, see it again tomorrow.</P>
+    </div>
+  );
+}
+
+/* ============================================================
+   COURSE DETAIL — what a course covers, time, difficulty, prerequisites
+   ============================================================
+   Reads optional course fields (estimatedMinutes, difficulty,
+   prerequisites, recommended — none of the 6 existing courses set these
+   yet) and falls back to sensible computed/neutral defaults when absent,
+   so this works correctly today without needing every course file
+   touched. Curating real values per course is a natural follow-up. */
+function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, onBack }) {
+  const enrolled = !!progressMap[course.id]?.enrolled;
+  const lessonCount = course.modules.reduce((n, m) => n + m.lessons.length, 0);
+  const estMinutes = course.estimatedMinutes || lessonCount * 8; // ~8 min/lesson heuristic when not curated
+  const estLabel = estMinutes < 60 ? `${estMinutes} min` : `${(estMinutes / 60).toFixed(estMinutes % 60 === 0 ? 0 : 1)} hrs`;
+  const difficulty = course.difficulty || null;
+  const prereqCourses = (course.prerequisites || []).map((id) => courses.find((c) => c.id === id)).filter(Boolean);
+  const recommendedCourses = (course.recommended || []).map((id) => courses.find((c) => c.id === id)).filter(Boolean);
+
+  return (
+    <div className="lp-shell-narrow">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Explore Courses
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
+        <div style={{ width: 54, height: 54, borderRadius: 16, background: course.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <CourseIcon name={course.icon} size={26} color={textOn(course.accent)} />
+        </div>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: course.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{course.title}</h1>
+          <p style={{ fontSize: 14, color: "#8A8FA0", margin: "2px 0 0", fontWeight: 600 }}>{course.tagline}</p>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, marginBottom: 28 }}>
+        <StatCard label="Estimated time" value={estLabel} />
+        <StatCard label="Difficulty" value={difficulty || "Not rated"} />
+        <StatCard label="Modules" value={course.modules.length} />
+        <StatCard label="Lessons" value={lessonCount} />
+      </div>
+
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 12px" }}>WHAT YOU'LL COVER</p>
+      {course.modules.map((m) => (
+        <div key={m.id} style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 8, background: course.accent, color: textOn(course.accent), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{m.number}</div>
+          <div>
+            <p style={{ fontSize: 14.5, fontWeight: 800, color: "#17213A", margin: 0 }}>{m.title}</p>
+            <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: "2px 0 0", fontWeight: 500, lineHeight: 1.5 }}>{m.description}</p>
+          </div>
+        </div>
+      ))}
+
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "24px 0 12px" }}>PREREQUISITES</p>
+      {prereqCourses.length === 0 ? (
+        <p style={{ fontSize: 14, color: "#166A3C", fontWeight: 700, marginBottom: 20 }}>None — this is a great starting point.</p>
+      ) : (
+        prereqCourses.map((pc) => {
+          const met = !!progressMap[pc.id]?.enrolled;
+          return (
+            <p key={pc.id} style={{ fontSize: 14, fontWeight: 700, color: met ? "#166A3C" : "#8A6A00", marginBottom: 8 }}>
+              {met ? "✓" : "○"} {pc.title}{!met && " — not yet enrolled"}
+            </p>
+          );
+        })
+      )}
+
+      {recommendedCourses.length > 0 && (
+        <>
+          <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "12px 0 12px" }}>RECOMMENDED ALONGSIDE THIS</p>
+          {recommendedCourses.map((rc) => (
+            <p key={rc.id} style={{ fontSize: 14, fontWeight: 700, color: "#17213A", marginBottom: 8 }}>{rc.title}</p>
+          ))}
+        </>
+      )}
+
+      {enrolled ? (
+        <button onClick={() => onOpenCourse(course)} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 15.5, cursor: "pointer", fontFamily: FONT_DISPLAY, marginTop: 12 }}>
+          Continue learning
+        </button>
+      ) : (
+        <button onClick={() => onEnroll(course.id)} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: course.accent, color: textOn(course.accent), fontWeight: 800, fontSize: 15.5, cursor: "pointer", fontFamily: FONT_DISPLAY, boxShadow: `0 4px 0 ${darken(course.accent, 0.25)}`, marginTop: 12 }}>
+          Enroll in this course
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
    LIBRARY (browse & enroll)
    ============================================================ */
-function Library({ courses, progressMap, onEnroll, onOpenCourse, onBack }) {
+function Library({ courses, progressMap, onOpenDetail, onBack }) {
   const [code, setCode] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
 
@@ -1052,7 +1416,7 @@ function Library({ courses, progressMap, onEnroll, onOpenCourse, onBack }) {
           const enrolled = !!progressMap[c.id]?.enrolled;
           const lessonCount = c.modules.reduce((n, m) => n + m.lessons.length, 0);
           return (
-            <div key={c.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22 }}>
+            <button key={c.id} onClick={() => onOpenDetail(c)} className="lp-btn" style={{ display: "block", width: "100%", textAlign: "left", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22, cursor: "pointer" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                 <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
@@ -1062,17 +1426,15 @@ function Library({ courses, progressMap, onEnroll, onOpenCourse, onBack }) {
                   <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{c.tagline}</p>
                 </div>
               </div>
-              <p style={{ fontSize: 13, color: "#A3A0B4", margin: "0 0 16px", fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
-              {enrolled ? (
-                <button onClick={() => onOpenCourse(c)} className="lp-btn" style={{ width: "100%", padding: "12px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 14.5, cursor: "pointer", fontFamily: FONT_DISPLAY }}>
-                  Continue learning
-                </button>
-              ) : (
-                <button onClick={() => onEnroll(c.id)} className="lp-btn" style={{ width: "100%", padding: "12px 0", borderRadius: 14, border: "none", background: c.accent, color: textOn(c.accent), fontWeight: 800, fontSize: 14.5, cursor: "pointer", fontFamily: FONT_DISPLAY, boxShadow: `0 4px 0 ${darken(c.accent, 0.25)}` }}>
-                  Enroll
-                </button>
-              )}
-            </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <p style={{ fontSize: 13, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
+                {enrolled ? (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#166A3C", background: "#E4F5EA", borderRadius: 999, padding: "4px 11px" }}>Enrolled ✓</span>
+                ) : (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#8A8FA0", background: "#F4F4F7", borderRadius: 999, padding: "4px 11px" }}>View details</span>
+                )}
+              </div>
+            </button>
           );
         })}
       </div>
@@ -1080,7 +1442,7 @@ function Library({ courses, progressMap, onEnroll, onOpenCourse, onBack }) {
   );
 }
 
-function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpenLibrary }) {
+function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpenLibrary, onOpenReviewHub }) {
   const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
   const enrolledCourses = courses.filter((c) => progressMap[c.id]?.enrolled);
   return (
@@ -1093,9 +1455,14 @@ function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpe
             </div>
             <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.4, color: "#8A8FA0", margin: 0 }}>YOUR ACADEMY</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#FFF7E0", borderRadius: 20, padding: "7px 13px" }}>
-            <Star size={15} color="#D9791F" fill="#D9791F" />
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#17213A" }}>{totalStars}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={onOpenReviewHub} className="lp-btn" title="Spaced Revision" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 20, border: "none", background: "#F1EEFC", cursor: "pointer" }}>
+              <Brain size={16} color="#6A4FC2" />
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#FFF7E0", borderRadius: 20, padding: "7px 13px" }}>
+              <Star size={15} color="#D9791F" fill="#D9791F" />
+              <span style={{ fontSize: 14, fontWeight: 800, color: "#17213A" }}>{totalStars}</span>
+            </div>
           </div>
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#17213A", marginBottom: 28, fontFamily: FONT_DISPLAY }}>Let's keep learning! 👋</h1>
@@ -1184,7 +1551,7 @@ function getNextLesson(course, module, lesson) {
 }
 
 export default function LearningPlatform({ user }) {
-  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review | library
+  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review | library | courseDetail | reviewHub | reviewAnalytics | reviewExplainer
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
 
@@ -1290,23 +1657,51 @@ export default function LearningPlatform({ user }) {
           onOpenCourse={(c) => setView({ screen: "course", course: c })}
           onOpenReview={() => setView({ screen: "review" })}
           onOpenLibrary={() => setView({ screen: "library" })}
+          onOpenReviewHub={() => setView({ screen: "reviewHub" })}
         />
       )}
       {view.screen === "library" && (
         <Library
           courses={visibleCourses}
           progressMap={progressMap}
-          onEnroll={enrollCourse}
-          onOpenCourse={(c) => setView({ screen: "course", course: c })}
+          onOpenDetail={(c) => setView({ screen: "courseDetail", course: c })}
           onBack={() => setView({ screen: "hub" })}
         />
       )}
+      {view.screen === "courseDetail" && (
+        <CourseDetail
+          course={view.course}
+          courses={visibleCourses}
+          progressMap={progressMap}
+          onEnroll={(id) => enrollCourse(id)}
+          onOpenCourse={(c) => setView({ screen: "course", course: c })}
+          onBack={() => setView({ screen: "library" })}
+        />
+      )}
+      {view.screen === "reviewHub" && (
+        <ReviewHub
+          courses={visibleCourses}
+          progressMap={progressMap}
+          dueCount={getDueReviews(visibleCourses, progressMap).length}
+          onStartReview={() => setView({ screen: "review", returnTo: "reviewHub" })}
+          onPracticeLesson={(course, module, lesson) => setView({ screen: "review", forcedList: [{ course, module, lesson }], returnTo: "reviewHub" })}
+          onOpenAnalytics={() => setView({ screen: "reviewAnalytics" })}
+          onOpenExplainer={() => setView({ screen: "reviewExplainer" })}
+          onBack={() => setView({ screen: "hub" })}
+        />
+      )}
+      {view.screen === "reviewAnalytics" && (
+        <ReviewAnalytics courses={visibleCourses} progressMap={progressMap} onBack={() => setView({ screen: "reviewHub" })} />
+      )}
+      {view.screen === "reviewExplainer" && (
+        <ReviewExplainer onBack={() => setView({ screen: "reviewHub" })} />
+      )}
       {view.screen === "review" && (
         <ReviewSession
-          dueList={getDueReviews(visibleCourses, progressMap)}
+          dueList={view.forcedList || getDueReviews(visibleCourses, progressMap)}
           onAnswer={recordReview}
           onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
-          onExit={() => setView({ screen: "hub" })}
+          onExit={() => setView({ screen: view.returnTo || "hub" })}
         />
       )}
       {view.screen === "course" && (
