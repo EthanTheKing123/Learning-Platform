@@ -18,6 +18,7 @@ export const psychologyLevel1 = {
   id: "psychology-level-1-beginner",
   title: "Psychology: Level 1 — Beginner",
   tagline: "Foundations of psychology — history, methods, brain, and core concepts.",
+  topic: "Psychology",
   icon: "brain",
   accent: "#7B2D9E",
   ink: "#1A1A2E",
