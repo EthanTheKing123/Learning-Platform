@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain, Apple, FlaskConical, Heart, School, Lightbulb } from "lucide-react";
+import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain, Apple, FlaskConical, Heart, School, Lightbulb, Award, LogOut } from "lucide-react";
 
 // Maps the short string each course sets as `icon` (e.g. "brain") to the
 // actual lucide component. Add a new line here whenever a new course wants
@@ -623,6 +623,160 @@ function MiniStars({ count, size = 13 }) {
       {[0, 1, 2].map((i) => (
         <Star key={i} size={size} color={i < count ? color : "#E7E5EE"} fill={i < count ? color : "#E7E5EE"} />
       ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   PROFILE — cumulative badges for total stars earned and total
+   lessons completed (bronze -> emerald, same bronze/silver/gold
+   shades as the per-lesson star rating above, extended upward with
+   diamond/ruby/emerald), plus one permanent badge per fully-
+   completed course. Thresholds below are a starting point — easy
+   to retune later, they're just plain numbers in one place.
+   ============================================================ */
+const BADGE_TIERS = [
+  { name: "Bronze", color: "#C88A55", starsNeeded: 10, lessonsNeeded: 5 },
+  { name: "Silver", color: "#AEB4C2", starsNeeded: 25, lessonsNeeded: 15 },
+  { name: "Gold", color: "#E9C13B", starsNeeded: 50, lessonsNeeded: 30 },
+  { name: "Diamond", color: "#5FD1E8", starsNeeded: 100, lessonsNeeded: 50 },
+  { name: "Ruby", color: "#B8123F", starsNeeded: 200, lessonsNeeded: 75 },
+  { name: "Emerald", color: "#0FA968", starsNeeded: 350, lessonsNeeded: 100 },
+];
+// Index of the highest tier a count qualifies for, -1 if none yet.
+function currentTierIndex(count, key) {
+  let idx = -1;
+  BADGE_TIERS.forEach((t, i) => { if (count >= t[key]) idx = i; });
+  return idx;
+}
+// A course only counts as "complete" once every module in it has real
+// lessons AND all of them are done — a course still waiting on future
+// modules to be built never counts, even at 100% of what exists so far.
+function isCourseFullyComplete(course, completedLessons) {
+  const realModules = course.modules.filter((m) => m.lessons.length > 0);
+  if (realModules.length === 0 || realModules.length < course.modules.length) return false;
+  return realModules.every((m) => m.lessons.every((l) => completedLessons.includes(l.id)));
+}
+
+function ProfileAvatar({ user, size = 34 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const source = user?.displayName || user?.email || "";
+  const initial = source.trim().charAt(0).toUpperCase() || "?";
+  if (user?.photoURL && !imgFailed) {
+    return (
+      <img
+        src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={() => setImgFailed(true)}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", display: "block", border: "2px solid #fff", boxShadow: "0 0 0 2px #EAEAF2" }}
+      />
+    );
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: "#17213A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * 0.42, fontFamily: FONT_DISPLAY, border: "2px solid #fff", boxShadow: "0 0 0 2px #EAEAF2", flexShrink: 0 }}>
+      {initial}
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value, bg }) {
+  return (
+    <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 18, padding: "18px 16px" }}>
+      <div style={{ width: 38, height: 38, borderRadius: 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+        {icon}
+      </div>
+      <p style={{ fontSize: 22, fontWeight: 800, color: "#17213A", margin: "0 0 2px", fontFamily: FONT_DISPLAY }}>{value}</p>
+      <p style={{ fontSize: 12.5, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>{label}</p>
+    </div>
+  );
+}
+
+function BadgeRow({ title, count, needKey, unit }) {
+  const earnedIdx = currentTierIndex(count, needKey);
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3, color: "#8A8FA0", marginBottom: 12 }}>{title}</p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {BADGE_TIERS.map((tier, i) => {
+          const earned = i <= earnedIdx;
+          const isNext = i === earnedIdx + 1;
+          return (
+            <div key={tier.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 74 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                background: earned ? tier.color : "#F1EFF8",
+                border: `3px solid ${earned ? "#fff" : "#E7E5EE"}`,
+                boxShadow: earned ? `0 3px 0 ${darken(tier.color, 0.3)}` : "none",
+              }}>
+                {earned ? <Award size={22} color={textOn(tier.color)} /> : <Lock size={16} color="#C6C3D6" />}
+              </div>
+              <p style={{ fontSize: 11.5, fontWeight: 800, color: earned ? "#17213A" : "#B0AEC4", margin: "6px 0 0", textAlign: "center" }}>{tier.name}</p>
+              {isNext && <p style={{ fontSize: 9.5, color: "#B0AEC4", margin: "1px 0 0", textAlign: "center" }}>{tier[needKey]} {unit}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Profile({ user, courses, progressMap, onBack, onSignOut }) {
+  const totalStars = Object.values(progressMap).reduce(
+    (n, p) => n + Object.values(p.scores || {}).reduce((s, entry) => s + starsForScore(entry.score, entry.total), 0),
+    0
+  );
+  const totalLessons = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
+  const avgStars = totalLessons ? totalStars / totalLessons : 0;
+  const completedCourses = courses.filter((c) => isCourseFullyComplete(c, progressMap[c.id]?.completedLessons || []));
+  const displayName = user?.displayName || (user?.email ? user.email.split("@")[0] : "Learner");
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Home
+      </button>
+
+      <div style={{ textAlign: "center", marginBottom: 30 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <ProfileAvatar user={user} size={84} />
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", margin: "14px 0 2px", fontFamily: FONT_DISPLAY }}>{displayName}</h1>
+        {user?.email && <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{user.email}</p>}
+      </div>
+
+      <div className="lp-grid" style={{ marginBottom: 34 }}>
+        <StatCard icon={<Star size={20} color="#D9791F" fill="#D9791F" />} label="Total stars" value={totalStars} bg="#FFF7E0" />
+        <StatCard icon={<Sparkles size={20} color="#6A4FC2" />} label="Avg stars / lesson" value={avgStars.toFixed(1)} bg="#F1EEFC" />
+        <StatCard icon={<Check size={20} color="#1C9450" />} label="Lessons complete" value={totalLessons} bg="#EAFAF0" />
+        <StatCard icon={<GraduationCap size={20} color="#2E7FD1" />} label="Courses complete" value={`${completedCourses.length}/${courses.length}`} bg="#EAF3FD" />
+      </div>
+
+      <BadgeRow title="STAR BADGES" count={totalStars} needKey="starsNeeded" unit="stars" />
+      <BadgeRow title="LESSON BADGES" count={totalLessons} needKey="lessonsNeeded" unit="lessons" />
+
+      <div style={{ marginBottom: 30 }}>
+        <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3, color: "#8A8FA0", marginBottom: 12 }}>COURSE BADGES</p>
+        {completedCourses.length === 0 ? (
+          <p style={{ fontSize: 13.5, color: "#B0AEC4", fontWeight: 600, margin: 0 }}>Finish every lesson in a course to earn its badge.</p>
+        ) : (
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {completedCourses.map((c) => (
+              <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 74 }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", border: "3px solid #fff", boxShadow: `0 3px 0 ${darken(c.accent, 0.3)}` }}>
+                  <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
+                </div>
+                <p style={{ fontSize: 11, fontWeight: 800, color: "#17213A", margin: "6px 0 0", textAlign: "center" }}>{c.title}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={onSignOut}
+        className="lp-btn"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#8A8FA0", fontWeight: 800, fontSize: 15, cursor: "pointer" }}
+      >
+        <LogOut size={16} /> Sign out
+      </button>
     </div>
   );
 }
@@ -1681,7 +1835,7 @@ function getNextLesson(course, module, lesson) {
   return null;
 }
 
-export default function LearningPlatform({ user }) {
+export default function LearningPlatform({ user, onSignOut }) {
   const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review | library | courseDetail | reviewHub | reviewAnalytics | reviewExplainer
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
@@ -1780,6 +1934,28 @@ export default function LearningPlatform({ user }) {
           screens were left with the class names in their JSX but zero
           matching CSS rules: full-width, no-gap divs, on every device. */}
       <style>{GLOBAL_STYLE}</style>
+      {/* Persistent avatar -> Profile trigger, rendered here at the root
+          (same reasoning as GLOBAL_STYLE above) so it survives every screen
+          change instead of only showing on the Hub. This replaced the old
+          plain-text "Sign out" link that used to sit here. */}
+      {view.screen !== "profile" && (
+        <button
+          onClick={() => setView({ screen: "profile" })}
+          title="Profile"
+          style={{ position: "fixed", top: 14, right: 14, zIndex: 50, border: "none", background: "transparent", cursor: "pointer", padding: 0, borderRadius: "50%" }}
+        >
+          <ProfileAvatar user={user} size={38} />
+        </button>
+      )}
+      {view.screen === "profile" && (
+        <Profile
+          user={user}
+          courses={visibleCourses}
+          progressMap={progressMap}
+          onBack={() => setView({ screen: "hub" })}
+          onSignOut={onSignOut}
+        />
+      )}
       {view.screen === "hub" && (
         <Hub
           courses={visibleCourses}
