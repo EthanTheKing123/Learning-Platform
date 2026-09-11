@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain } from "lucide-react";
+import { Lock, Check, ChevronRight, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain, TrendingUp } from "lucide-react";
 
 // Maps the short string each course sets as `icon` (e.g. "brain") to the
 // actual lucide component. Add a new line here whenever a new course wants
@@ -9,6 +9,7 @@ const COURSE_ICONS = {
   moon: Moon,
   dumbbell: Dumbbell,
   brain: Brain,
+  "line-chart": TrendingUp,
 };
 function CourseIcon({ name, ...props }) {
   const Icon = COURSE_ICONS[name] || BookOpen; // falls back to BookOpen if a course forgets to set one
