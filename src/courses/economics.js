@@ -17,6 +17,8 @@ export const economics = {
   title: "Economics",
   tagline: "The full NSW Economics 11–12 syllabus, section by section — nothing skipped.",
   icon: "line-chart",
+  locked: true,
+  code: "YEAR11ECONOMICS",
   accent: "#1878A0",       // teal — distinct from every other course's accent
   ink: "#17213A",
   modules: [
