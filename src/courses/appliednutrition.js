@@ -18,7 +18,6 @@ export const appliedNutrition = {
   id: "applied-nutrition",
   title: "Applied Nutrition",
   tagline: "From macros and creatine to naturopathic and alternative approaches.",
-  topic: "Psychology",
   topic: "Health",
   icon: "apple",
   locked: true,
