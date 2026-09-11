@@ -7,4 +7,5 @@ import { studyLearning } from "./studyskills.js";
 import { chemistry } from "./chemistryoutcomes.js";
 import { psychologyLevel1 } from "./psychology.js";
 import { appliedNutrition } from "./appliednutrition.js";
-export const COURSES = [sleepScience, boostPerformance, studyLearning, chemistry, psychologyLevel1, appliedNutrition];
+import { economics } from "./economics.js";
+export const COURSES = [sleepScience, boostPerformance, studyLearning, chemistry, psychologyLevel1, appliedNutrition, economics];
