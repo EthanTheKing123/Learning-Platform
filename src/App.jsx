@@ -677,7 +677,7 @@ function ProfileAvatar({ user, size = 34 }) {
   );
 }
 
-function StatCard({ icon, label, value, bg }) {
+function ProfileStatCard({ icon, label, value, bg }) {
   return (
     <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 18, padding: "18px 16px" }}>
       <div style={{ width: 38, height: 38, borderRadius: 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
@@ -743,10 +743,10 @@ function Profile({ user, courses, progressMap, onBack, onSignOut }) {
       </div>
 
       <div className="lp-grid" style={{ marginBottom: 34 }}>
-        <StatCard icon={<Star size={20} color="#D9791F" fill="#D9791F" />} label="Total stars" value={totalStars} bg="#FFF7E0" />
-        <StatCard icon={<Sparkles size={20} color="#6A4FC2" />} label="Avg stars / lesson" value={avgStars.toFixed(1)} bg="#F1EEFC" />
-        <StatCard icon={<Check size={20} color="#1C9450" />} label="Lessons complete" value={totalLessons} bg="#EAFAF0" />
-        <StatCard icon={<GraduationCap size={20} color="#2E7FD1" />} label="Courses complete" value={`${completedCourses.length}/${courses.length}`} bg="#EAF3FD" />
+        <ProfileStatCard icon={<Star size={20} color="#D9791F" fill="#D9791F" />} label="Total stars" value={totalStars} bg="#FFF7E0" />
+        <ProfileStatCard icon={<Sparkles size={20} color="#6A4FC2" />} label="Avg stars / lesson" value={avgStars.toFixed(1)} bg="#F1EEFC" />
+        <ProfileStatCard icon={<Check size={20} color="#1C9450" />} label="Lessons complete" value={totalLessons} bg="#EAFAF0" />
+        <ProfileStatCard icon={<GraduationCap size={20} color="#2E7FD1" />} label="Courses complete" value={`${completedCourses.length}/${courses.length}`} bg="#EAF3FD" />
       </div>
 
       <BadgeRow title="STAR BADGES" count={totalStars} needKey="starsNeeded" unit="stars" />
