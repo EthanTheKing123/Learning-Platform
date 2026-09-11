@@ -76,6 +76,52 @@ function getDueReviews(courses, progressMap) {
   });
   return due;
 }
+// Runs once per load (see the progress-loading useEffect below). Modules
+// completed BEFORE the review system existed never had a chance to trigger
+// the seeding step inside completeLesson, so without this they'd simply
+// never enter the review queue at all. This scans every already-complete
+// module and adds any missing review entries, then that gets saved back
+// so it's a real one-time fix, not a re-check on every load forever.
+function backfillReviewEntries(course, progress) {
+  const completedLessons = progress.completedLessons || [];
+  let review = progress.review || {};
+  let changed = false;
+  course.modules.forEach((module) => {
+    if (module.lessons.length > 0 && module.lessons.every((l) => completedLessons.includes(l.id))) {
+      module.lessons.forEach((l) => {
+        if (!review[l.id]) {
+          if (!changed) review = { ...review };
+          review[l.id] = newReviewEntry();
+          changed = true;
+        }
+      });
+    }
+  });
+  return changed ? { ...progress, review } : progress;
+}
+
+/* ============================================================
+   ENROLLMENT
+   ============================================================
+   Only enrolled courses show on the Hub — everything else lives in the
+   Library until the person explicitly enrolls. Enrollment is just one
+   extra `enrolled: true` flag added to that course's own existing
+   progress object (same document storage.js already saves), so this
+   needed zero changes to storage.js, same as the review system.
+   Before this feature existed, every course was just always visible —
+   this backfill grandfathers in anything already engaged with (a
+   completed lesson, a score, or a review entry) so it doesn't vanish
+   from someone's homepage the instant this ships. A course with truly
+   zero prior activity defaults to NOT enrolled, appearing only in the
+   Library, which is the real behaviour going forward. */
+function backfillEnrollment(progress) {
+  if (progress.enrolled) return progress;
+  const hasEngagement =
+    (progress.completedLessons && progress.completedLessons.length > 0) ||
+    (progress.scores && Object.keys(progress.scores).length > 0) ||
+    (progress.review && Object.keys(progress.review).length > 0);
+  return hasEngagement ? { ...progress, enrolled: true } : progress;
+}
 
 // Picks readable text (white vs. navy) based on the background colour's brightness —
 // used anywhere a dynamic/vibrant background hosts text or an icon.
@@ -961,8 +1007,82 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
   );
 }
 
-function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview }) {
+/* ============================================================
+   LIBRARY (browse & enroll)
+   ============================================================ */
+function Library({ courses, progressMap, onEnroll, onOpenCourse, onBack }) {
+  const [code, setCode] = useState("");
+  const [codeMsg, setCodeMsg] = useState("");
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Home
+      </button>
+
+      <h1 style={{ fontSize: 28, fontWeight: 800, color: "#17213A", marginBottom: 6, fontFamily: FONT_DISPLAY }}>Explore Courses</h1>
+      <p style={{ fontSize: 14.5, color: "#8A8FA0", fontWeight: 600, marginBottom: 24 }}>Browse everything on the platform and enroll in what you want to learn.</p>
+
+      {/* Code entry — same visual treatment as the sign-in screen's inputs
+          (AuthGate.jsx). Not wired to anything yet: this is UI only, for
+          future private courses accessed via a code. */}
+      <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 18, padding: 20, marginBottom: 28 }}>
+        <p style={{ fontSize: 13, fontWeight: 800, color: "#17213A", margin: "0 0 10px" }}>Have a course code?</p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            type="text"
+            placeholder="Enter code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            style={{ flex: 1, minWidth: 160, boxSizing: "border-box", padding: "13px 16px", borderRadius: 14, border: "2px solid #EAEAF2", fontSize: 15, outline: "none", fontWeight: 600 }}
+          />
+          <button
+            onClick={() => setCodeMsg("Course codes aren't live yet — check back soon.")}
+            className="lp-btn"
+            style={{ padding: "13px 22px", borderRadius: 14, border: "none", background: "#2E7FD1", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 0 #1F5C99", fontFamily: FONT_DISPLAY, whiteSpace: "nowrap" }}
+          >
+            Redeem
+          </button>
+        </div>
+        {codeMsg && <p style={{ fontSize: 13, color: "#8A8FA0", fontWeight: 600, marginTop: 10, marginBottom: 0 }}>{codeMsg}</p>}
+      </div>
+
+      <div className="lp-grid">
+        {courses.map((c) => {
+          const enrolled = !!progressMap[c.id]?.enrolled;
+          const lessonCount = c.modules.reduce((n, m) => n + m.lessons.length, 0);
+          return (
+            <div key={c.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 20, padding: 22 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div style={{ width: 46, height: 46, borderRadius: 14, background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 19, fontWeight: 800, color: c.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{c.title}</p>
+                  <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{c.tagline}</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: "#A3A0B4", margin: "0 0 16px", fontWeight: 600 }}>{c.modules.length} modules · {lessonCount} lessons</p>
+              {enrolled ? (
+                <button onClick={() => onOpenCourse(c)} className="lp-btn" style={{ width: "100%", padding: "12px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 14.5, cursor: "pointer", fontFamily: FONT_DISPLAY }}>
+                  Continue learning
+                </button>
+              ) : (
+                <button onClick={() => onEnroll(c.id)} className="lp-btn" style={{ width: "100%", padding: "12px 0", borderRadius: 14, border: "none", background: c.accent, color: textOn(c.accent), fontWeight: 800, fontSize: 14.5, cursor: "pointer", fontFamily: FONT_DISPLAY, boxShadow: `0 4px 0 ${darken(c.accent, 0.25)}` }}>
+                  Enroll
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpenLibrary }) {
   const totalStars = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
+  const enrolledCourses = courses.filter((c) => progressMap[c.id]?.enrolled);
   return (
     <div className="lp-shell-wide">
       <div>
@@ -1000,7 +1120,7 @@ function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview }) {
         )}
 
         <div className="lp-grid">
-          {courses.map((c) => {
+          {enrolledCourses.map((c) => {
             const completedLessons = progressMap[c.id]?.completedLessons || [];
             const done = completedLessons.length;
             const total = c.modules.reduce((n, m) => n + (m.lessons.length || (m.lessonPreview || []).length), 0);
@@ -1029,9 +1149,17 @@ function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview }) {
             );
           })}
 
-          <div style={{ border: "2px dashed #E7E5EE", borderRadius: 20, padding: 22, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontSize: 14, color: "#B0AEC4", margin: 0, fontWeight: 700 }}>Psychology and Effective Learning — coming soon ✨</p>
-          </div>
+          <button
+            onClick={onOpenLibrary}
+            className="lp-btn"
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, background: "#F4F4F7", border: "2px dashed #D7D5E0", borderRadius: 20, padding: 22, cursor: "pointer", textAlign: "center", minHeight: 140 }}
+          >
+            <div style={{ width: 46, height: 46, borderRadius: 14, background: "#E4E3EC", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <BookOpen size={22} color="#8A8FA0" />
+            </div>
+            <p style={{ fontSize: 15.5, fontWeight: 800, color: "#5A5870", margin: 0, fontFamily: FONT_DISPLAY }}>Explore courses</p>
+            <p style={{ fontSize: 12.5, color: "#A3A0B4", margin: 0, fontWeight: 600 }}>Browse & enroll in more</p>
+          </button>
         </div>
       </div>
     </div>
@@ -1056,7 +1184,7 @@ function getNextLesson(course, module, lesson) {
 }
 
 export default function LearningPlatform({ user }) {
-  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review
+  const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review | library
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
 
@@ -1068,7 +1196,14 @@ export default function LearningPlatform({ user }) {
 
   useEffect(() => {
     (async () => {
-      const entries = await Promise.all(visibleCourses.map(async (c) => [c.id, await loadProgress(c.id)]));
+      const entries = await Promise.all(visibleCourses.map(async (c) => {
+        const loaded = await loadProgress(c.id);
+        const base = { completedLessons: [], scores: {}, review: {}, ...loaded };
+        const withEnrollment = backfillEnrollment(base);
+        const backfilled = backfillReviewEntries(c, withEnrollment);
+        if (backfilled !== base) saveProgress(c.id, backfilled); // only writes back if something was actually missing
+        return [c.id, backfilled];
+      }));
       setProgressMap(Object.fromEntries(entries));
       setLoaded(true);
     })();
@@ -1116,6 +1251,19 @@ export default function LearningPlatform({ user }) {
     });
   }, []);
 
+  // Adds a course to the person's homepage. Just one flag on that course's
+  // existing progress object — once set, it stays set (nothing ever
+  // un-enrolls a course), so it's a permanent part of their profile the
+  // same way completed lessons are.
+  const enrollCourse = useCallback((courseId) => {
+    setProgressMap((prev) => {
+      const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
+      const next = { ...cur, enrolled: true };
+      saveProgress(courseId, next);
+      return { ...prev, [courseId]: next };
+    });
+  }, []);
+
   if (!loaded) {
     return <div style={{ minHeight: 400, display: "flex", alignItems: "center", justifyContent: "center", color: "#B0AEC4", fontSize: 14, fontWeight: 700 }}>Loading…</div>;
   }
@@ -1141,6 +1289,16 @@ export default function LearningPlatform({ user }) {
           dueCount={getDueReviews(visibleCourses, progressMap).length}
           onOpenCourse={(c) => setView({ screen: "course", course: c })}
           onOpenReview={() => setView({ screen: "review" })}
+          onOpenLibrary={() => setView({ screen: "library" })}
+        />
+      )}
+      {view.screen === "library" && (
+        <Library
+          courses={visibleCourses}
+          progressMap={progressMap}
+          onEnroll={enrollCourse}
+          onOpenCourse={(c) => setView({ screen: "course", course: c })}
+          onBack={() => setView({ screen: "hub" })}
         />
       )}
       {view.screen === "review" && (
