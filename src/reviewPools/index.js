@@ -5,6 +5,8 @@
 // falls back to reusing its own end-of-lesson quiz for review (see
 // pickReviewQuestion in App.jsx) — nothing breaks if a course has no file yet.
 
+import { appliedNutritionReviews } from "./appliedNutritionReviews.js";
+
 export const REVIEW_POOLS = {
-  // "sleep-science": sleepScienceReviews,
+  "sleep-science": sleepScienceReviews,
 };
