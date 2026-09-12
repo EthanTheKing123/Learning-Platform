@@ -51,3 +51,20 @@ export async function saveProgress(courseId, progress) {
     console.error("Failed to save progress to Firestore", err);
   }
 }
+
+// Read-only lookup of someone ELSE's progress for one course — used for
+// viewing a friend's profile. Deliberately separate from loadProgress
+// above: no localStorage fallback and no migration (that only makes sense
+// for your own account), and it returns null rather than an empty
+// progress object when access is denied, so the caller can tell "they
+// have zero progress" apart from "I'm not allowed to see this" (e.g. not
+// actually friends yet — firestore.rules is what actually enforces this;
+// this null just lets the UI react to it sensibly).
+export async function loadFriendProgress(friendUid, courseId) {
+  try {
+    const snap = await getDoc(doc(db, "users", friendUid, "progress", courseId));
+    return snap.exists() ? snap.data() : { completedLessons: [] };
+  } catch {
+    return null;
+  }
+}
