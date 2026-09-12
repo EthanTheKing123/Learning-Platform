@@ -29,6 +29,7 @@ const TOPIC_META = {
 import { COURSES } from "./courses/index.js";
 import { loadProgress, saveProgress, loadFriendProgress } from "./storage.js";
 import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
+import { REVIEW_POOLS } from "./reviewPools/index.js";
 import {
   normalizeUsername, claimUsername, getMyUsername, getPublicProfile, findUserByUsername,
   getFriends, getIncomingRequests, getRelationship, sendFriendRequest, cancelFriendRequest,
@@ -79,27 +80,37 @@ function dueInLabel(nextDue, today) {
 }
 function newReviewEntry() {
   const today = todayStr();
-  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]), timesReviewed: 0, correctCount: 0 };
+  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]), timesReviewed: 0, correctCount: 0, lastQuestionIndex: null };
 }
-function advanceReviewEntry(entry, wasCorrect) {
+function advanceReviewEntry(entry, wasCorrect, questionIndex) {
   const today = todayStr();
   const timesReviewed = (entry?.timesReviewed || 0) + 1;
   const correctCount = (entry?.correctCount || 0) + (wasCorrect ? 1 : 0);
+  const lastQuestionIndex = questionIndex ?? entry?.lastQuestionIndex ?? null;
   if (wasCorrect) {
     const nextBox = Math.min((entry?.box || 1) + 1, REVIEW_BOX_DAYS.length);
-    return { box: nextBox, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[nextBox - 1]), timesReviewed, correctCount };
+    return { box: nextBox, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[nextBox - 1]), timesReviewed, correctCount, lastQuestionIndex };
   }
-  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]), timesReviewed, correctCount };
+  return { box: 1, lastReviewed: today, nextDue: addDays(today, REVIEW_BOX_DAYS[0]), timesReviewed, correctCount, lastQuestionIndex };
 }
-// Every due lesson contributes ONE question to the single combined daily
-// review quiz. Which question is picked shifts by the day (not random on
-// every render), so revisiting a lesson tomorrow surfaces a different
-// question from its existing quiz instead of the exact same one each time.
-function pickReviewQuestion(lesson) {
+// Prefers a course's dedicated review pool (src/reviewPools/) so review
+// sessions test the same knowledge with genuinely different questions,
+// rather than repeating a lesson's own end-of-lesson quiz. Never repeats
+// the same pool question twice in a row for a given lesson. Falls back to
+// picking from the lesson's own quiz for any course without a pool yet.
+function pickReviewQuestion(course, lesson, lastQuestionIndex) {
+  const pool = REVIEW_POOLS[course.id]?.[lesson.id];
+  if (pool && pool.length > 0) {
+    let candidates = pool.map((_, i) => i);
+    if (pool.length > 1 && lastQuestionIndex != null) candidates = candidates.filter((i) => i !== lastQuestionIndex);
+    const index = candidates[Math.floor(Math.random() * candidates.length)];
+    return { question: pool[index], index };
+  }
   const quiz = lesson.quiz || [];
   if (quiz.length === 0) return null;
   const dayIndex = Math.floor(Date.now() / 86400000);
-  return quiz[(dayIndex + lesson.id.length) % quiz.length];
+  const index = (dayIndex + lesson.id.length) % quiz.length;
+  return { question: quiz[index], index };
 }
 function getDueReviews(courses, progressMap) {
   const today = todayStr();
@@ -109,7 +120,7 @@ function getDueReviews(courses, progressMap) {
     course.modules.forEach((module) => {
       module.lessons.forEach((lesson) => {
         const entry = review[lesson.id];
-        if (entry && entry.nextDue <= today) due.push({ course, module, lesson });
+        if (entry && entry.nextDue <= today) due.push({ course, module, lesson, lastQuestionIndex: entry.lastQuestionIndex ?? null });
       });
     });
   });
@@ -1735,7 +1746,12 @@ function CurriculumView({ course, completedLessons, onBack }) {
    needed: each question is pulled straight from that lesson's existing quiz. */
 function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice }) {
   const [items] = useState(() =>
-    dueList.map((item) => ({ ...item, question: pickReviewQuestion(item.lesson) })).filter((item) => item.question)
+    dueList
+      .map((item) => {
+        const picked = pickReviewQuestion(item.course, item.lesson, item.lastQuestionIndex);
+        return picked ? { ...item, question: picked.question, questionIndex: picked.index } : null;
+      })
+      .filter(Boolean)
   );
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState([]); // { item, correct }
@@ -1795,7 +1811,7 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice 
         key={current.course.id + current.lesson.id}
         data={current.question}
         onAnswered={(isCorrect) => {
-          onAnswer(current.course.id, current.lesson.id, isCorrect);
+          onAnswer(current.course.id, current.lesson.id, isCorrect, current.questionIndex);
           setResults((r) => [...r, { item: current, correct: isCorrect }]);
           setIndex((i) => i + 1);
         }}
@@ -2448,7 +2464,7 @@ export default function LearningPlatform({ user, onSignOut }) {
   // Called once per question during a daily review session — advances (or
   // resets) that lesson's Leitner box based on whether it was answered
   // correctly, and persists it the same way completeLesson does.
-  const recordReview = useCallback((courseId, lessonId, wasCorrect, isPractice) => {
+  const recordReview = useCallback((courseId, lessonId, wasCorrect, isPractice, questionIndex) => {
     // Practice sessions (launched from the "Practice" button on an item
     // that isn't actually due yet) are for the person's own benefit only —
     // they must never advance the spaced-repetition schedule, or someone
@@ -2456,7 +2472,7 @@ export default function LearningPlatform({ user, onSignOut }) {
     if (isPractice) return;
     setProgressMap((prev) => {
       const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
-      const nextEntry = advanceReviewEntry(cur.review?.[lessonId], wasCorrect);
+      const nextEntry = advanceReviewEntry(cur.review?.[lessonId], wasCorrect, questionIndex);
       const next = { ...cur, review: { ...(cur.review || {}), [lessonId]: nextEntry } };
       saveProgress(courseId, next);
       return { ...prev, [courseId]: next };
@@ -2592,7 +2608,7 @@ export default function LearningPlatform({ user, onSignOut }) {
         <ReviewSession
           dueList={view.forcedList || getDueReviews(visibleCourses, progressMap)}
           isPractice={!!view.forcedList}
-          onAnswer={(courseId, lessonId, correct) => recordReview(courseId, lessonId, correct, !!view.forcedList)}
+          onAnswer={(courseId, lessonId, correct, questionIndex) => recordReview(courseId, lessonId, correct, !!view.forcedList, questionIndex)}
           onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
           onExit={() => setView({ screen: view.returnTo || "hub" })}
         />
