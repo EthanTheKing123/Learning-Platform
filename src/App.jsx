@@ -1885,11 +1885,14 @@ function ReviewSession({ dueList, dailyLimit, onAnswer, onRevisitLesson, onIncre
    what's due — practicing early still advances its box, same as a real
    review), and links into the analytics and explainer pages below. */
 function ReviewHub({ courses, progressMap, dueCount, dailyLimit, onSetDailyLimit, onStartReview, onOpenAnalytics, onOpenExplainer, onBack }) {
+  const [selectedBox, setSelectedBox] = useState(null); // null = show everything, 1-5 = filtered
   const allItems = getAllReviewItems(courses, progressMap);
   const byBox = [1, 2, 3, 4, 5].map((b) => allItems.filter((i) => i.entry.box === b).length);
   const maxBox = Math.max(1, ...byBox);
   const today = todayStr();
-  const sorted = [...allItems].sort((a, b) => a.entry.nextDue.localeCompare(b.entry.nextDue));
+  const sorted = [...allItems]
+    .filter((item) => selectedBox === null || item.entry.box === selectedBox)
+    .sort((a, b) => a.entry.nextDue.localeCompare(b.entry.nextDue));
 
   return (
     <div className="lp-shell-wide">
@@ -1954,22 +1957,40 @@ function ReviewHub({ courses, progressMap, dueCount, dailyLimit, onSetDailyLimit
         </div>
       </div>
 
-      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>WHERE YOUR LESSONS SIT</p>
-      <div style={{ display: "flex", gap: 10, marginBottom: 30 }}>
-        {byBox.map((count, i) => (
-          <div key={i} style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ height: 56, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-              <div style={{ width: "70%", height: Math.max(6, (count / maxBox) * 56), background: BOX_COLORS[i], borderRadius: 6, transition: "height 0.3s ease" }} />
-            </div>
-            <p style={{ fontSize: 15, fontWeight: 800, color: "#17213A", margin: "6px 0 0" }}>{count}</p>
-            <p style={{ fontSize: 11, color: "#A3A0B4", margin: 0, fontWeight: 700 }}>Box {i + 1}</p>
-          </div>
-        ))}
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>WHERE YOUR LESSONS SIT — TAP A BOX TO FILTER</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        {byBox.map((count, i) => {
+          const boxNum = i + 1;
+          const isSelected = selectedBox === boxNum;
+          return (
+            <button
+              key={i}
+              onClick={() => setSelectedBox(isSelected ? null : boxNum)}
+              className="lp-btn"
+              style={{ flex: 1, textAlign: "center", background: isSelected ? "#F1EEFC" : "transparent", border: `2px solid ${isSelected ? "#6A4FC2" : "transparent"}`, borderRadius: 12, padding: "6px 4px 8px", cursor: "pointer" }}
+            >
+              <div style={{ height: 56, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                <div style={{ width: "70%", height: Math.max(6, (count / maxBox) * 56), background: BOX_COLORS[i], borderRadius: 6, transition: "height 0.3s ease", opacity: selectedBox === null || isSelected ? 1 : 0.35 }} />
+              </div>
+              <p style={{ fontSize: 15, fontWeight: 800, color: "#17213A", margin: "6px 0 0" }}>{count}</p>
+              <p style={{ fontSize: 11, color: "#A3A0B4", margin: 0, fontWeight: 700 }}>Box {boxNum}</p>
+            </button>
+          );
+        })}
       </div>
 
-      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>ALL LESSONS IN REVIEW ({allItems.length})</p>
+      {selectedBox !== null && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F1EEFC", borderRadius: 12, padding: "8px 14px", marginBottom: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "#6A4FC2", margin: 0 }}>Showing only Box {selectedBox} ({sorted.length} lesson{sorted.length === 1 ? "" : "s"})</p>
+          <button onClick={() => setSelectedBox(null)} className="lp-btn" style={{ background: "none", border: "none", color: "#6A4FC2", fontWeight: 800, fontSize: 13, cursor: "pointer", padding: 0 }}>Clear</button>
+        </div>
+      )}
+
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>
+        {selectedBox === null ? `ALL LESSONS IN REVIEW (${allItems.length})` : `BOX ${selectedBox} LESSONS (${sorted.length})`}
+      </p>
       {sorted.length === 0 ? (
-        <p style={{ fontSize: 14, color: "#B0AEC4", fontWeight: 600 }}>Nothing here yet — finish a whole module and it'll show up for review here.</p>
+        <p style={{ fontSize: 14, color: "#B0AEC4", fontWeight: 600 }}>{selectedBox === null ? "Nothing here yet — finish a whole module and it'll show up for review here." : "Nothing in this box right now."}</p>
       ) : (
         sorted.map((item) => (
           <div key={item.course.id + item.lesson.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
