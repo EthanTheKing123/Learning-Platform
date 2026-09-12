@@ -50,6 +50,14 @@ import {
    loadProgress/saveProgress just persist whatever shape they're given. */
 const REVIEW_BOX_DAYS = [1, 3, 7, 14, 30]; // index 0 = Box 1
 const BOX_COLORS = ["#D8465F", "#D9791F", "#D4A017", "#2E7FD1", "#166A3C"]; // Box 1 (red, urgent) -> Box 5 (green, mastered)
+const DEFAULT_DAILY_LIMIT = 15;
+const MIN_DAILY_LIMIT = 10;
+const DAILY_LIMIT_STEP = 5;
+// Not a real course — a reserved id reusing the exact same loadProgress/
+// saveProgress calls every course already uses, just to persist one small
+// cross-course setting (today's review cap). storage.js needed zero new
+// functions for this, same reasoning as everything else in this system.
+const SETTINGS_DOC_ID = "__settings__";
 
 function todayStr() {
   // Local calendar date — NOT toISOString(), which is UTC and caused reviews
@@ -120,10 +128,13 @@ function getDueReviews(courses, progressMap) {
     course.modules.forEach((module) => {
       module.lessons.forEach((lesson) => {
         const entry = review[lesson.id];
-        if (entry && entry.nextDue <= today) due.push({ course, module, lesson, lastQuestionIndex: entry.lastQuestionIndex ?? null });
+        if (entry && entry.nextDue <= today) due.push({ course, module, lesson, lastQuestionIndex: entry.lastQuestionIndex ?? null, nextDue: entry.nextDue });
       });
     });
   });
+  // Oldest-overdue-first — matters once a daily cap exists, so a backlog
+  // drains in the order things actually became due, not arbitrarily.
+  due.sort((a, b) => a.nextDue.localeCompare(b.nextDue));
   return due;
 }
 // Every lesson currently tracked by spaced repetition, due or not — powers
@@ -1744,7 +1755,7 @@ function CurriculumView({ course, completedLessons, onBack }) {
    sequential quiz — reusing the same Question component (and its built-in
    explain-on-wrong feedback) that regular lessons use. No new content is
    needed: each question is pulled straight from that lesson's existing quiz. */
-function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice }) {
+function ReviewSession({ dueList, dailyLimit, onAnswer, onRevisitLesson, onIncreaseLimit, onExit }) {
   const [items] = useState(() =>
     dueList
       .map((item) => {
@@ -1753,8 +1764,10 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice 
       })
       .filter(Boolean)
   );
+  const [visibleCount, setVisibleCount] = useState(() => Math.min(dailyLimit, items.length));
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState([]); // { item, correct }
+  const [showLimitOptions, setShowLimitOptions] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -1765,17 +1778,60 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice 
     );
   }
 
-  if (index >= items.length) {
+  if (index >= visibleCount) {
     const correctCount = results.filter((r) => r.correct).length;
     const missed = results.filter((r) => !r.correct);
+    const remaining = items.length - visibleCount;
     return (
       <div className="lp-shell-narrow">
         <div className="lp-pop">
-          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 6 }}>{isPractice ? "PRACTICE" : "DAILY REVIEW"}</p>
-          <h1 style={{ fontSize: 25, fontWeight: 800, color: "#17213A", marginBottom: 14, fontFamily: FONT_DISPLAY }}>{correctCount}/{items.length} correct</h1>
-          {isPractice ? (
-            <p style={{ fontSize: 15, color: "#8A8FA0", fontWeight: 700, marginBottom: 20 }}>Nice work — this was just practice, so it didn't change your review schedule.</p>
-          ) : missed.length === 0 ? (
+          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 6 }}>DAILY REVIEW</p>
+          <h1 style={{ fontSize: 25, fontWeight: 800, color: "#17213A", marginBottom: 14, fontFamily: FONT_DISPLAY }}>{correctCount}/{visibleCount} correct</h1>
+
+          {remaining > 0 && (
+            <div style={{ background: "#FFF7E0", border: "2px solid #FDECC8", borderRadius: 16, padding: 16, marginBottom: 20 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#8A6A00", margin: "0 0 12px" }}>
+                You've hit today's limit of {dailyLimit} — {remaining} more still waiting.
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => setVisibleCount((v) => Math.min(items.length, v + dailyLimit))}
+                  className="lp-btn"
+                  style={{ padding: "10px 16px", borderRadius: 12, border: "none", background: "#D9791F", color: "#fff", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}
+                >
+                  Do {Math.min(dailyLimit, remaining)} more now
+                </button>
+                <button
+                  onClick={() => setShowLimitOptions((s) => !s)}
+                  className="lp-btn"
+                  style={{ padding: "10px 16px", borderRadius: 12, border: "2px solid #FDECC8", background: "#fff", color: "#8A6A00", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}
+                >
+                  Increase daily limit
+                </button>
+              </div>
+              {showLimitOptions && (
+                <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "#8A6A00" }}>New daily limit:</span>
+                  {[dailyLimit + DAILY_LIMIT_STEP, dailyLimit + DAILY_LIMIT_STEP * 2].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => {
+                        onIncreaseLimit(n);
+                        setVisibleCount((v) => Math.min(items.length, Math.max(v, n)));
+                        setShowLimitOptions(false);
+                      }}
+                      className="lp-btn"
+                      style={{ padding: "6px 14px", borderRadius: 10, border: "2px solid #FDECC8", background: "#fff", fontWeight: 800, fontSize: 13, color: "#8A6A00", cursor: "pointer" }}
+                    >
+                      {n}/day
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {missed.length === 0 ? (
             <p style={{ fontSize: 15, color: "#166A3C", fontWeight: 700, marginBottom: 20 }}>Perfect — every one of these just moved up a review box. 🎉</p>
           ) : (
             <>
@@ -1805,7 +1861,7 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice 
   const current = items[index];
   return (
     <div className="lp-shell-narrow">
-      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>{isPractice ? "PRACTICE" : "DAILY REVIEW"} · {index + 1} of {items.length}</p>
+      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>DAILY REVIEW · {index + 1} of {visibleCount}</p>
       <p style={{ fontSize: 12.5, color: "#B0AEC4", fontWeight: 700, marginBottom: 16 }}>{current.course.title} · Lesson {current.lesson.id} — {current.lesson.title}</p>
       <Question
         key={current.course.id + current.lesson.id}
@@ -1828,7 +1884,7 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice 
    today's review, browse and practice ANY tracked lesson early (not just
    what's due — practicing early still advances its box, same as a real
    review), and links into the analytics and explainer pages below. */
-function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLesson, onOpenAnalytics, onOpenExplainer, onBack }) {
+function ReviewHub({ courses, progressMap, dueCount, dailyLimit, onSetDailyLimit, onStartReview, onOpenAnalytics, onOpenExplainer, onBack }) {
   const allItems = getAllReviewItems(courses, progressMap);
   const byBox = [1, 2, 3, 4, 5].map((b) => allItems.filter((i) => i.entry.box === b).length);
   const maxBox = Math.max(1, ...byBox);
@@ -1876,6 +1932,28 @@ function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLe
         {dueCount > 0 && <ChevronRight size={22} color="#D9791F" />}
       </button>
 
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F6F7FB", borderRadius: 14, padding: "10px 14px", marginBottom: 30 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: "#5A5870", margin: 0 }}>Daily review limit</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            onClick={() => onSetDailyLimit(dailyLimit - DAILY_LIMIT_STEP)}
+            disabled={dailyLimit <= MIN_DAILY_LIMIT}
+            className="lp-btn"
+            style={{ width: 26, height: 26, borderRadius: 8, border: "2px solid #E7E5EE", background: "#fff", color: dailyLimit <= MIN_DAILY_LIMIT ? "#D7D5E0" : "#17213A", fontWeight: 800, fontSize: 15, cursor: dailyLimit <= MIN_DAILY_LIMIT ? "default" : "pointer", lineHeight: 1 }}
+          >
+            −
+          </button>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "#17213A", minWidth: 44, textAlign: "center" }}>{dailyLimit}/day</span>
+          <button
+            onClick={() => onSetDailyLimit(dailyLimit + DAILY_LIMIT_STEP)}
+            className="lp-btn"
+            style={{ width: 26, height: 26, borderRadius: 8, border: "2px solid #E7E5EE", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 15, cursor: "pointer", lineHeight: 1 }}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
       <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>WHERE YOUR LESSONS SIT</p>
       <div style={{ display: "flex", gap: 10, marginBottom: 30 }}>
         {byBox.map((count, i) => (
@@ -1894,19 +1972,14 @@ function ReviewHub({ courses, progressMap, dueCount, onStartReview, onPracticeLe
         <p style={{ fontSize: 14, color: "#B0AEC4", fontWeight: 600 }}>Nothing here yet — finish a whole module and it'll show up for review here.</p>
       ) : (
         sorted.map((item) => (
-          <div key={item.course.id + item.lesson.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#fff", border: "2px solid #EAEAF2", borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 12, fontWeight: 800, color: "#A3A0B4", margin: 0 }}>{item.course.title} · Lesson {item.lesson.id}</p>
-              <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: "2px 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.lesson.title}</p>
-              <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>
-                <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
-                {" · "}{dueInLabel(item.entry.nextDue, today)}
-                {" · "}Reviewed {item.entry.timesReviewed || 0}×
-              </p>
-            </div>
-            <button onClick={() => onPracticeLesson(item.course, item.module, item.lesson)} className="lp-btn" style={{ flexShrink: 0, padding: "9px 16px", borderRadius: 11, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-              Practice
-            </button>
+          <div key={item.course.id + item.lesson.id} style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
+            <p style={{ fontSize: 12, fontWeight: 800, color: "#A3A0B4", margin: 0 }}>{item.course.title} · Lesson {item.lesson.id}</p>
+            <p style={{ fontSize: 14.5, fontWeight: 700, color: "#17213A", margin: "2px 0 4px" }}>{item.lesson.title}</p>
+            <p style={{ fontSize: 12, color: "#8A8FA0", margin: 0, fontWeight: 700 }}>
+              <span style={{ color: BOX_COLORS[item.entry.box - 1] }}>Box {item.entry.box}</span>
+              {" · "}{dueInLabel(item.entry.nextDue, today)}
+              {" · "}Reviewed {item.entry.timesReviewed || 0}×
+            </p>
           </div>
         ))
       )}
@@ -2410,6 +2483,7 @@ export default function LearningPlatform({ user, onSignOut }) {
   const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review | library | courseDetail | reviewHub | reviewAnalytics | reviewExplainer
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
+  const [dailyLimit, setDailyLimitState] = useState(DEFAULT_DAILY_LIMIT);
 
   // A course with no `restrictedTo` field is visible to everyone. A course
   // with `restrictedTo: ["someone@email.com"]` only shows for that account.
@@ -2428,10 +2502,21 @@ export default function LearningPlatform({ user, onSignOut }) {
         return [c.id, backfilled];
       }));
       setProgressMap(Object.fromEntries(entries));
+      const settings = await loadProgress(SETTINGS_DOC_ID);
+      if (settings?.dailyReviewLimit) setDailyLimitState(Math.max(MIN_DAILY_LIMIT, settings.dailyReviewLimit));
       setLoaded(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
+
+  // Persists immediately (same pattern as every other progress write here) —
+  // clamped to the minimum so someone can't accidentally set it to 0 and
+  // never see a review again.
+  const setDailyLimit = useCallback((newLimit) => {
+    const clamped = Math.max(MIN_DAILY_LIMIT, newLimit);
+    setDailyLimitState(clamped);
+    saveProgress(SETTINGS_DOC_ID, { dailyReviewLimit: clamped });
+  }, []);
 
   const completeLesson = useCallback((courseId, lessonId, score, total) => {
     setProgressMap((prev) => {
@@ -2464,12 +2549,7 @@ export default function LearningPlatform({ user, onSignOut }) {
   // Called once per question during a daily review session — advances (or
   // resets) that lesson's Leitner box based on whether it was answered
   // correctly, and persists it the same way completeLesson does.
-  const recordReview = useCallback((courseId, lessonId, wasCorrect, isPractice, questionIndex) => {
-    // Practice sessions (launched from the "Practice" button on an item
-    // that isn't actually due yet) are for the person's own benefit only —
-    // they must never advance the spaced-repetition schedule, or someone
-    // could just keep practicing the same item to manually push its box up.
-    if (isPractice) return;
+  const recordReview = useCallback((courseId, lessonId, wasCorrect, questionIndex) => {
     setProgressMap((prev) => {
       const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
       const nextEntry = advanceReviewEntry(cur.review?.[lessonId], wasCorrect, questionIndex);
@@ -2591,8 +2671,9 @@ export default function LearningPlatform({ user, onSignOut }) {
           courses={visibleCourses}
           progressMap={progressMap}
           dueCount={getDueReviews(visibleCourses, progressMap).length}
+          dailyLimit={dailyLimit}
+          onSetDailyLimit={setDailyLimit}
           onStartReview={() => setView({ screen: "review", returnTo: "reviewHub" })}
-          onPracticeLesson={(course, module, lesson) => setView({ screen: "review", forcedList: [{ course, module, lesson }], returnTo: "reviewHub" })}
           onOpenAnalytics={() => setView({ screen: "reviewAnalytics" })}
           onOpenExplainer={() => setView({ screen: "reviewExplainer" })}
           onBack={() => setView({ screen: "hub" })}
@@ -2606,10 +2687,11 @@ export default function LearningPlatform({ user, onSignOut }) {
       )}
       {view.screen === "review" && (
         <ReviewSession
-          dueList={view.forcedList || getDueReviews(visibleCourses, progressMap)}
-          isPractice={!!view.forcedList}
-          onAnswer={(courseId, lessonId, correct, questionIndex) => recordReview(courseId, lessonId, correct, !!view.forcedList, questionIndex)}
+          dueList={getDueReviews(visibleCourses, progressMap)}
+          dailyLimit={dailyLimit}
+          onAnswer={(courseId, lessonId, correct, questionIndex) => recordReview(courseId, lessonId, correct, questionIndex)}
           onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
+          onIncreaseLimit={setDailyLimit}
           onExit={() => setView({ screen: view.returnTo || "hub" })}
         />
       )}
