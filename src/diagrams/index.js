@@ -12,8 +12,24 @@
 // kinds on top, it doesn't replace anything existing.
 import EvidencePyramid from "./EvidencePyramid.jsx";
 import LoadingPhaseChart from "./LoadingPhaseChart.jsx";
+import MacroBreakdown from "./MacroBreakdown.jsx";
+import ProteinSourcesChart from "./ProteinSourcesChart.jsx";
+import GlycemicResponseChart from "./GlycemicResponseChart.jsx";
+import CommonDeficienciesChart from "./CommonDeficienciesChart.jsx";
+import HydrationNeedChart from "./HydrationNeedChart.jsx";
+import EnergySystemsTimeline from "./EnergySystemsTimeline.jsx";
+import GutDiversityDiagram from "./GutDiversityDiagram.jsx";
+import FastingTimelineChart from "./FastingTimelineChart.jsx";
 
 export const DIAGRAM_REGISTRY = {
   evidencePyramid: EvidencePyramid,
   loadingPhaseChart: LoadingPhaseChart,
+  macroBreakdown: MacroBreakdown,
+  proteinSourcesChart: ProteinSourcesChart,
+  glycemicResponseChart: GlycemicResponseChart,
+  commonDeficienciesChart: CommonDeficienciesChart,
+  hydrationNeedChart: HydrationNeedChart,
+  energySystemsTimeline: EnergySystemsTimeline,
+  gutDiversityDiagram: GutDiversityDiagram,
+  fastingTimelineChart: FastingTimelineChart,
 };
