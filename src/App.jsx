@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain, Apple, FlaskConical, Heart, School, Lightbulb, Award, LogOut } from "lucide-react";
+import { Lock, Check, ChevronRight, ChevronLeft, Moon, ArrowLeft, X, Star, BookOpen, Sparkles, RotateCw, Home as HomeIcon, GraduationCap, Dumbbell, Brain, Apple, FlaskConical, Heart, School, Lightbulb, Award, LogOut, TrendingUp, Users, UserPlus, Search } from "lucide-react";
 
 // Maps the short string each course sets as `icon` (e.g. "brain") to the
 // actual lucide component. Add a new line here whenever a new course wants
@@ -11,6 +11,7 @@ const COURSE_ICONS = {
   brain: Brain,
   apple: Apple,
   flask: FlaskConical,
+  "line-chart": TrendingUp,
 };
 function CourseIcon({ name, ...props }) {
   const Icon = COURSE_ICONS[name] || BookOpen; // falls back to BookOpen if a course forgets to set one
@@ -26,8 +27,13 @@ const TOPIC_META = {
   "Study Tips": { icon: Lightbulb, accent: "#D9791F" },
 };
 import { COURSES } from "./courses/index.js";
-import { loadProgress, saveProgress } from "./storage.js";
+import { loadProgress, saveProgress, loadFriendProgress } from "./storage.js";
 import { DIAGRAM_REGISTRY } from "./diagrams/index.js";
+import {
+  normalizeUsername, claimUsername, getMyUsername, getPublicProfile, findUserByUsername,
+  getFriends, getIncomingRequests, getRelationship, sendFriendRequest, cancelFriendRequest,
+  declineFriendRequest, acceptFriendRequest, removeFriend,
+} from "./social.js";
 
 /* ============================================================
    SPACED REPETITION (Leitner-style "daily review" system)
@@ -180,6 +186,15 @@ function darken(hex, amount = 0.18) {
   const g = Math.max(0, Math.round(parseInt(c.substring(2, 4), 16) * (1 - amount)));
   const b = Math.max(0, Math.round(parseInt(c.substring(4, 6), 16) * (1 - amount)));
   return `rgb(${r}, ${g}, ${b})`;
+}
+// Inverse of darken() — used for the shiny gradient highlight on earned badges.
+function lighten(hex, amount = 0.4) {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16), g = parseInt(c.substring(2, 4), 16), b = parseInt(c.substring(4, 6), 16);
+  const nr = Math.round(r + (255 - r) * amount);
+  const ng = Math.round(g + (255 - g) * amount);
+  const nb = Math.round(b + (255 - b) * amount);
+  return `rgb(${nr}, ${ng}, ${nb})`;
 }
 
 const FONT_DISPLAY = '"Baloo 2", "Nunito", ui-rounded, "Segoe UI", sans-serif';
@@ -658,6 +673,61 @@ function isCourseFullyComplete(course, completedLessons) {
   return realModules.every((m) => m.lessons.every((l) => completedLessons.includes(l.id)));
 }
 
+// Derives WHEN each badge tier was first reached, purely from data
+// storage.js already saves (each lesson's score entry has an `at`
+// timestamp) — no new field needed. Replays every completed lesson across
+// every course in chronological order, running a cumulative star/lesson
+// count, and records the timestamp at the moment each threshold is first
+// crossed. Lessons completed before per-lesson score tracking existed have
+// no `at` and become an undated baseline instead — any tier only reached
+// via that baseline shows a null date (handled by formatBadgeDate below).
+function computeBadgeDates(progressMap) {
+  const dated = [];
+  let baselineLessons = 0;
+  Object.values(progressMap).forEach((p) => {
+    const scores = p.scores || {};
+    (p.completedLessons || []).forEach((lessonId) => {
+      const entry = scores[lessonId];
+      if (entry && entry.at) dated.push({ at: entry.at, stars: starsForScore(entry.score, entry.total) });
+      else baselineLessons += 1;
+    });
+  });
+  dated.sort((a, b) => a.at - b.at);
+
+  let stars = 0, lessons = baselineLessons;
+  const starDates = BADGE_TIERS.map(() => null);
+  const lessonDates = BADGE_TIERS.map(() => null);
+  dated.forEach((entry) => {
+    stars += entry.stars;
+    lessons += 1;
+    BADGE_TIERS.forEach((t, i) => {
+      if (starDates[i] === null && stars >= t.starsNeeded) starDates[i] = entry.at;
+      if (lessonDates[i] === null && lessons >= t.lessonsNeeded) lessonDates[i] = entry.at;
+    });
+  });
+  return { starDates, lessonDates };
+}
+// Same idea for a single course's completion badge: the timestamp of the
+// last lesson in it to be finished. Null if any contributing lesson has no
+// dated score (pre-dates tracking), same honest fallback as above.
+function courseCompletionDate(course, progress) {
+  const scores = progress?.scores || {};
+  let latest = null;
+  for (const m of course.modules) {
+    if (m.lessons.length === 0) continue;
+    for (const l of m.lessons) {
+      const entry = scores[l.id];
+      if (!entry || !entry.at) return null;
+      if (latest === null || entry.at > latest) latest = entry.at;
+    }
+  }
+  return latest;
+}
+function formatBadgeDate(at) {
+  if (!at) return "Earned — exact date unknown";
+  return `Earned ${new Date(at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`;
+}
+
 function ProfileAvatar({ user, size = 34 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const source = user?.displayName || user?.email || "";
@@ -689,7 +759,69 @@ function ProfileStatCard({ icon, label, value, bg }) {
   );
 }
 
-function BadgeRow({ title, count, needKey, unit }) {
+// The small popup shown when an EARNED badge is tapped — name, what it's
+// for, and the date it was reached (or an honest "unknown" if it predates
+// per-lesson date tracking).
+function BadgeModal({ title, subtitle, dateLabel, color, icon, onClose }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(23,33,58,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+    >
+      <div onClick={(e) => e.stopPropagation()} className="lp-pop" style={{ background: "#fff", borderRadius: 20, padding: "28px 24px 22px", width: "100%", maxWidth: 300, textAlign: "center", boxShadow: "0 16px 40px rgba(23,33,58,0.28)" }}>
+        <div style={{
+          width: 68, height: 68, borderRadius: "50%", margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center",
+          background: `linear-gradient(135deg, ${lighten(color, 0.45)}, ${color})`,
+          boxShadow: `0 4px 0 ${darken(color, 0.32)}, inset 0 0 0 3px rgba(255,255,255,0.4)`,
+        }}>
+          {icon}
+        </div>
+        <h3 style={{ fontSize: 18.5, fontWeight: 800, color: "#17213A", margin: "0 0 4px", fontFamily: FONT_DISPLAY }}>{title}</h3>
+        <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: "0 0 14px", fontWeight: 600 }}>{subtitle}</p>
+        <p style={{ fontSize: 12, color: "#B0AEC4", margin: "0 0 20px", fontWeight: 700, letterSpacing: 0.2 }}>{dateLabel}</p>
+        <button onClick={onClose} className="lp-btn" style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer" }}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// A single medal: gradient coin + a little ribbon tail underneath for
+// earned ones (this is the "more character" pass — a plain flat-colour
+// circle read as just another icon chip like everywhere else in the app;
+// the gradient sheen + ribbon reads specifically as an award). Locked
+// tiers render as an inert div — only earned badges are ever clickable.
+function Medal({ earned, color, size = 52, iconSize = 22, onClick }) {
+  const coin = (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{
+        width: size, height: size, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+        background: earned ? `linear-gradient(135deg, ${lighten(color, 0.45)}, ${color})` : "#F1EFF8",
+        border: `3px solid ${earned ? "#fff" : "#E7E5EE"}`,
+        boxShadow: earned ? `0 3px 0 ${darken(color, 0.32)}, inset 0 0 0 3px rgba(255,255,255,0.4)` : "none",
+        position: "relative", zIndex: 1,
+      }}>
+        {earned ? <Award size={iconSize} color={textOn(color)} /> : <Lock size={16} color="#C6C3D6" />}
+      </div>
+      {earned && (
+        <div style={{
+          width: size * 0.58, height: 12, marginTop: -5,
+          background: darken(color, 0.12),
+          clipPath: "polygon(0% 0%, 100% 0%, 82% 100%, 50% 78%, 18% 100%)",
+        }} />
+      )}
+    </div>
+  );
+  if (!earned) return coin;
+  return (
+    <button onClick={onClick} className="lp-btn" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}>
+      {coin}
+    </button>
+  );
+}
+
+function BadgeRow({ title, count, needKey, unit, dates, onSelect }) {
   const earnedIdx = currentTierIndex(count, needKey);
   return (
     <div style={{ marginBottom: 24 }}>
@@ -700,15 +832,8 @@ function BadgeRow({ title, count, needKey, unit }) {
           const isNext = i === earnedIdx + 1;
           return (
             <div key={tier.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 74 }}>
-              <div style={{
-                width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                background: earned ? tier.color : "#F1EFF8",
-                border: `3px solid ${earned ? "#fff" : "#E7E5EE"}`,
-                boxShadow: earned ? `0 3px 0 ${darken(tier.color, 0.3)}` : "none",
-              }}>
-                {earned ? <Award size={22} color={textOn(tier.color)} /> : <Lock size={16} color="#C6C3D6" />}
-              </div>
-              <p style={{ fontSize: 11.5, fontWeight: 800, color: earned ? "#17213A" : "#B0AEC4", margin: "6px 0 0", textAlign: "center" }}>{tier.name}</p>
+              <Medal earned={earned} color={tier.color} onClick={() => onSelect(tier, dates[i])} />
+              <p style={{ fontSize: 11.5, fontWeight: 800, color: earned ? "#17213A" : "#B0AEC4", margin: "4px 0 0", textAlign: "center" }}>{tier.name}</p>
               {isNext && <p style={{ fontSize: 9.5, color: "#B0AEC4", margin: "1px 0 0", textAlign: "center" }}>{tier[needKey]} {unit}</p>}
             </div>
           );
@@ -718,7 +843,11 @@ function BadgeRow({ title, count, needKey, unit }) {
   );
 }
 
-function Profile({ user, courses, progressMap, onBack, onSignOut }) {
+// The stats grid + both badge rows + course badges — the part of a
+// profile that's identical whether you're looking at your own or a
+// friend's (once you actually have access to their progress data).
+// Self-contained: owns its own "which badge popup is open" state.
+function ProfileStatsAndBadges({ courses, progressMap }) {
   const totalStars = Object.values(progressMap).reduce(
     (n, p) => n + Object.values(p.scores || {}).reduce((s, entry) => s + starsForScore(entry.score, entry.total), 0),
     0
@@ -726,22 +855,11 @@ function Profile({ user, courses, progressMap, onBack, onSignOut }) {
   const totalLessons = Object.values(progressMap).reduce((n, p) => n + (p.completedLessons?.length || 0), 0);
   const avgStars = totalLessons ? totalStars / totalLessons : 0;
   const completedCourses = courses.filter((c) => isCourseFullyComplete(c, progressMap[c.id]?.completedLessons || []));
-  const displayName = user?.displayName || (user?.email ? user.email.split("@")[0] : "Learner");
+  const { starDates, lessonDates } = computeBadgeDates(progressMap);
+  const [openBadge, setOpenBadge] = useState(null);
 
   return (
-    <div className="lp-shell-wide">
-      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
-        <ArrowLeft size={16} /> Home
-      </button>
-
-      <div style={{ textAlign: "center", marginBottom: 30 }}>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <ProfileAvatar user={user} size={84} />
-        </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", margin: "14px 0 2px", fontFamily: FONT_DISPLAY }}>{displayName}</h1>
-        {user?.email && <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{user.email}</p>}
-      </div>
-
+    <>
       <div className="lp-grid" style={{ marginBottom: 34 }}>
         <ProfileStatCard icon={<Star size={20} color="#D9791F" fill="#D9791F" />} label="Total stars" value={totalStars} bg="#FFF7E0" />
         <ProfileStatCard icon={<Sparkles size={20} color="#6A4FC2" />} label="Avg stars / lesson" value={avgStars.toFixed(1)} bg="#F1EEFC" />
@@ -749,8 +867,20 @@ function Profile({ user, courses, progressMap, onBack, onSignOut }) {
         <ProfileStatCard icon={<GraduationCap size={20} color="#2E7FD1" />} label="Courses complete" value={`${completedCourses.length}/${courses.length}`} bg="#EAF3FD" />
       </div>
 
-      <BadgeRow title="STAR BADGES" count={totalStars} needKey="starsNeeded" unit="stars" />
-      <BadgeRow title="LESSON BADGES" count={totalLessons} needKey="lessonsNeeded" unit="lessons" />
+      <BadgeRow
+        title="STAR BADGES" count={totalStars} needKey="starsNeeded" unit="stars" dates={starDates}
+        onSelect={(tier, at) => setOpenBadge({
+          title: `${tier.name} — Stars`, subtitle: `Earned ${tier.starsNeeded}+ total stars`,
+          dateLabel: formatBadgeDate(at), color: tier.color, icon: <Award size={30} color={textOn(tier.color)} />,
+        })}
+      />
+      <BadgeRow
+        title="LESSON BADGES" count={totalLessons} needKey="lessonsNeeded" unit="lessons" dates={lessonDates}
+        onSelect={(tier, at) => setOpenBadge({
+          title: `${tier.name} — Lessons`, subtitle: `Completed ${tier.lessonsNeeded}+ lessons`,
+          dateLabel: formatBadgeDate(at), color: tier.color, icon: <Award size={30} color={textOn(tier.color)} />,
+        })}
+      />
 
       <div style={{ marginBottom: 30 }}>
         <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3, color: "#8A8FA0", marginBottom: 12 }}>COURSE BADGES</p>
@@ -760,15 +890,113 @@ function Profile({ user, courses, progressMap, onBack, onSignOut }) {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {completedCourses.map((c) => (
               <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 74 }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: c.accent, display: "flex", alignItems: "center", justifyContent: "center", border: "3px solid #fff", boxShadow: `0 3px 0 ${darken(c.accent, 0.3)}` }}>
-                  <CourseIcon name={c.icon} size={22} color={textOn(c.accent)} />
-                </div>
-                <p style={{ fontSize: 11, fontWeight: 800, color: "#17213A", margin: "6px 0 0", textAlign: "center" }}>{c.title}</p>
+                <Medal
+                  earned color={c.accent}
+                  onClick={() => setOpenBadge({
+                    title: c.title, subtitle: "Completed the full course",
+                    dateLabel: formatBadgeDate(courseCompletionDate(c, progressMap[c.id])),
+                    color: c.accent, icon: <CourseIcon name={c.icon} size={28} color={textOn(c.accent)} />,
+                  })}
+                />
+                <p style={{ fontSize: 11, fontWeight: 800, color: "#17213A", margin: "4px 0 0", textAlign: "center" }}>{c.title}</p>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {openBadge && <BadgeModal {...openBadge} onClose={() => setOpenBadge(null)} />}
+    </>
+  );
+}
+
+function Profile({ user, courses, progressMap, onBack, onSignOut, onOpenFriends }) {
+  const displayName = user?.displayName || (user?.email ? user.email.split("@")[0] : "Learner");
+  const [myUsername, setMyUsername] = useState(undefined); // undefined = loading, null = none set yet
+  const [claimInput, setClaimInput] = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [claiming, setClaiming] = useState(false);
+  const [friendCount, setFriendCount] = useState(null);
+  const [requestCount, setRequestCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyUsername(user.uid).then((n) => { if (!cancelled) setMyUsername(n); });
+    getFriends(user.uid).then((f) => { if (!cancelled) setFriendCount(f.length); });
+    getIncomingRequests(user.uid).then((r) => { if (!cancelled) setRequestCount(r.length); });
+    return () => { cancelled = true; };
+  }, [user.uid]);
+
+  const handleClaim = async () => {
+    setClaimError("");
+    setClaiming(true);
+    try {
+      const name = await claimUsername(user, claimInput);
+      setMyUsername(name);
+    } catch (err) {
+      setClaimError(err.message);
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Home
+      </button>
+
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <ProfileAvatar user={user} size={84} />
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", margin: "14px 0 2px", fontFamily: FONT_DISPLAY }}>{displayName}</h1>
+        {user?.email && <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{user.email}</p>}
+        {myUsername && <p style={{ fontSize: 13.5, color: "#2E7FD1", margin: "2px 0 0", fontWeight: 700 }}>@{myUsername}</p>}
+      </div>
+
+      {myUsername === null && (
+        <div style={{ background: "#F6F7FB", border: "2px solid #EAEAF2", borderRadius: 16, padding: 18, marginBottom: 26 }}>
+          <p style={{ fontSize: 14, fontWeight: 800, color: "#17213A", margin: "0 0 4px" }}>Pick a username</p>
+          <p style={{ fontSize: 13, color: "#8A8FA0", margin: "0 0 12px", fontWeight: 600 }}>Friends can find you by this once it's set — letters, numbers, underscore, 3-20 characters. It can't be changed later, so choose carefully.</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={claimInput} onChange={(e) => setClaimInput(e.target.value)} placeholder="username" disabled={claiming}
+              style={{ flex: 1, boxSizing: "border-box", padding: "11px 14px", borderRadius: 12, border: "2px solid #EAEAF2", fontSize: 14.5, fontWeight: 600, outline: "none" }}
+            />
+            <button
+              onClick={handleClaim} disabled={claiming || !claimInput.trim()} className="lp-btn"
+              style={{ padding: "0 18px", borderRadius: 12, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 14, cursor: claiming ? "default" : "pointer" }}
+            >
+              Claim
+            </button>
+          </div>
+          {claimError && <p style={{ fontSize: 12.5, color: "#D8465F", fontWeight: 700, margin: "8px 0 0" }}>{claimError}</p>}
+        </div>
+      )}
+
+      <button
+        onClick={onOpenFriends} className="lp-btn lp-card"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: "16px 18px", cursor: "pointer", marginBottom: 30 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EAF3FD", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Users size={19} color="#2E7FD1" />
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <p style={{ fontSize: 15, fontWeight: 800, color: "#17213A", margin: 0 }}>Friends</p>
+            <p style={{ fontSize: 12.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{friendCount === null ? "…" : `${friendCount} friend${friendCount === 1 ? "" : "s"}`}</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {requestCount > 0 && (
+            <span style={{ background: "#D8465F", color: "#fff", fontSize: 11.5, fontWeight: 800, borderRadius: 20, padding: "3px 9px" }}>{requestCount} new</span>
+          )}
+          <ChevronRight size={18} color="#B0AEC4" />
+        </div>
+      </button>
+
+      <ProfileStatsAndBadges courses={courses} progressMap={progressMap} />
 
       <button
         onClick={onSignOut}
@@ -777,6 +1005,294 @@ function Profile({ user, courses, progressMap, onBack, onSignOut }) {
       >
         <LogOut size={16} /> Sign out
       </button>
+    </div>
+  );
+}
+
+/* ============================================================
+   FRIENDS — list, incoming requests, and add-by-username. A username
+   must already be claimed (Profile handles that) to send or receive
+   requests, since that's how people find each other in the first place.
+   ============================================================ */
+function FriendRow({ person, onClick, right }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 4px" }}>
+      <button onClick={onClick} disabled={!onClick} style={{ display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: onClick ? "pointer" : "default", textAlign: "left", flex: 1, minWidth: 0 }}>
+        <ProfileAvatar user={{ displayName: person.displayName, photoURL: person.photoURL }} size={40} />
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 14.5, fontWeight: 800, color: "#17213A", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.displayName}</p>
+          {person.username && <p style={{ fontSize: 12.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>@{person.username}</p>}
+        </div>
+      </button>
+      {right}
+    </div>
+  );
+}
+
+function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
+  const [friends, setFriends] = useState(null);
+  const [requests, setRequests] = useState(null);
+  const [myProfile, setMyProfile] = useState(null);
+  const [search, setSearch] = useState("");
+  const [searchResult, setSearchResult] = useState(null); // { profile, relationship } | "not_found" | null
+  const [searching, setSearching] = useState(false);
+  const [busyUid, setBusyUid] = useState(null);
+
+  const refresh = () => {
+    getFriends(user.uid).then(setFriends);
+    getIncomingRequests(user.uid).then(setRequests);
+  };
+  useEffect(() => {
+    refresh();
+    getPublicProfile(user.uid).then(setMyProfile);
+  }, [user.uid]);
+
+  const handleSearch = async () => {
+    const name = normalizeUsername(search);
+    if (!name) return;
+    setSearching(true);
+    setSearchResult(null);
+    try {
+      const found = await findUserByUsername(name);
+      if (!found) { setSearchResult("not_found"); return; }
+      if (found.uid === user.uid) { setSearchResult("self"); return; }
+      const relationship = await getRelationship(user.uid, found.uid);
+      setSearchResult({ profile: found, relationship });
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const withBusy = async (uid, fn) => {
+    setBusyUid(uid);
+    try { await fn(); } finally { setBusyUid(null); }
+  };
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Profile
+      </button>
+      <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", marginBottom: 24, fontFamily: FONT_DISPLAY }}>Friends</h1>
+
+      <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: 18, marginBottom: 26 }}>
+        <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>ADD A FRIEND</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="@username" disabled={searching}
+            style={{ flex: 1, boxSizing: "border-box", padding: "11px 14px", borderRadius: 12, border: "2px solid #EAEAF2", fontSize: 14.5, fontWeight: 600, outline: "none" }}
+          />
+          <button onClick={handleSearch} disabled={searching || !search.trim()} className="lp-btn" style={{ padding: "0 16px", borderRadius: 12, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+            <Search size={16} />
+          </button>
+        </div>
+
+        {searchResult === "not_found" && <p style={{ fontSize: 13, color: "#D8465F", fontWeight: 700, margin: "12px 0 0" }}>No one found with that username.</p>}
+        {searchResult === "self" && <p style={{ fontSize: 13, color: "#B0AEC4", fontWeight: 700, margin: "12px 0 0" }}>That's you!</p>}
+        {searchResult && searchResult !== "not_found" && searchResult !== "self" && (
+          <div style={{ marginTop: 14, borderTop: "1px solid #EAEAF2", paddingTop: 14 }}>
+            <FriendRow
+              person={searchResult.profile}
+              right={
+                searchResult.relationship === "friends" ? (
+                  <span style={{ fontSize: 12.5, color: "#1C9450", fontWeight: 800 }}>Friends</span>
+                ) : searchResult.relationship === "outgoing" ? (
+                  <button
+                    disabled={busyUid === searchResult.profile.uid} onClick={() => withBusy(searchResult.profile.uid, async () => {
+                      await cancelFriendRequest(user.uid, searchResult.profile.uid);
+                      setSearchResult({ ...searchResult, relationship: null });
+                    })}
+                    style={{ fontSize: 12.5, fontWeight: 800, color: "#8A8FA0", background: "#F1EFF8", border: "none", borderRadius: 20, padding: "8px 14px", cursor: "pointer" }}
+                  >
+                    Requested — cancel
+                  </button>
+                ) : searchResult.relationship === "incoming" ? (
+                  <button
+                    disabled={busyUid === searchResult.profile.uid} onClick={() => withBusy(searchResult.profile.uid, async () => {
+                      await acceptFriendRequest(user.uid, myProfile, { uid: searchResult.profile.uid, fromUsername: searchResult.profile.username, fromDisplayName: searchResult.profile.displayName, fromPhotoURL: searchResult.profile.photoURL });
+                      setSearchResult({ ...searchResult, relationship: "friends" });
+                      refresh();
+                    })}
+                    className="lp-btn"
+                    style={{ fontSize: 12.5, fontWeight: 800, color: "#fff", background: "#1C9450", border: "none", borderRadius: 20, padding: "8px 14px", cursor: "pointer" }}
+                  >
+                    Accept
+                  </button>
+                ) : (
+                  <button
+                    disabled={busyUid === searchResult.profile.uid} onClick={() => withBusy(searchResult.profile.uid, async () => {
+                      await sendFriendRequest(user, searchResult.profile.uid);
+                      setSearchResult({ ...searchResult, relationship: "outgoing" });
+                    })}
+                    className="lp-btn"
+                    style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 800, color: "#fff", background: "#2E7FD1", border: "none", borderRadius: 20, padding: "8px 14px", cursor: "pointer" }}
+                  >
+                    <UserPlus size={13} /> Add
+                  </button>
+                )
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      {requests && requests.length > 0 && (
+        <div style={{ marginBottom: 26 }}>
+          <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, marginBottom: 8 }}>REQUESTS</p>
+          <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: "4px 14px" }}>
+            {requests.map((r) => (
+              <div key={r.uid} style={{ borderBottom: "1px solid #F1EFF8" }}>
+                <FriendRow
+                  person={{ displayName: r.fromDisplayName, username: r.fromUsername, photoURL: r.fromPhotoURL }}
+                  right={
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        disabled={busyUid === r.uid} onClick={() => withBusy(r.uid, async () => { await declineFriendRequest(user.uid, r.uid); refresh(); })}
+                        style={{ width: 30, height: 30, borderRadius: "50%", border: "none", background: "#F1EFF8", color: "#8A8FA0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        <X size={14} />
+                      </button>
+                      <button
+                        disabled={busyUid === r.uid} onClick={() => withBusy(r.uid, async () => { await acceptFriendRequest(user.uid, myProfile, r); refresh(); })}
+                        style={{ width: 30, height: 30, borderRadius: "50%", border: "none", background: "#1C9450", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        <Check size={14} />
+                      </button>
+                    </div>
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, marginBottom: 8 }}>YOUR FRIENDS</p>
+        {friends === null ? (
+          <p style={{ fontSize: 13.5, color: "#B0AEC4", fontWeight: 600 }}>Loading…</p>
+        ) : friends.length === 0 ? (
+          <p style={{ fontSize: 13.5, color: "#B0AEC4", fontWeight: 600 }}>No friends yet — search for a username above to add someone.</p>
+        ) : (
+          <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: "4px 14px" }}>
+            {friends.map((f) => (
+              <div key={f.uid} style={{ borderBottom: "1px solid #F1EFF8" }}>
+                <FriendRow person={f} onClick={() => onOpenFriendProfile(f.uid)} right={<ChevronRight size={16} color="#B0AEC4" />} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   FRIEND PROFILE — a friend's profile viewed read-only. Same
+   stats/badges body as your own Profile once you're actually friends
+   (enforced server-side by firestore.rules, not just hidden client-side);
+   otherwise shows the relationship state instead of stats.
+   ============================================================ */
+function FriendProfileView({ user, targetUid, onBack }) {
+  const [profile, setProfile] = useState(undefined); // undefined = loading
+  const [relationship, setRelationship] = useState(undefined);
+  const [progressMap, setProgressMap] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProfile(undefined);
+    setRelationship(undefined);
+    setProgressMap(null);
+    getPublicProfile(targetUid).then((p) => { if (!cancelled) setProfile(p); });
+    getRelationship(user.uid, targetUid).then((r) => { if (!cancelled) setRelationship(r); });
+    return () => { cancelled = true; };
+  }, [user.uid, targetUid]);
+
+  useEffect(() => {
+    if (relationship !== "friends") return;
+    let cancelled = false;
+    Promise.all(COURSES.map(async (c) => [c.id, await loadFriendProgress(targetUid, c.id)])).then((entries) => {
+      if (cancelled) return;
+      const map = {};
+      entries.forEach(([id, p]) => { if (p) map[id] = p; });
+      setProgressMap(map);
+    });
+    return () => { cancelled = true; };
+  }, [relationship, targetUid]);
+
+  if (profile === undefined || relationship === undefined) {
+    return <div className="lp-shell-wide"><p style={{ color: "#B0AEC4", fontWeight: 700 }}>Loading…</p></div>;
+  }
+  if (!profile) {
+    return (
+      <div className="lp-shell-wide">
+        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+          <ArrowLeft size={16} /> Back
+        </button>
+        <p style={{ color: "#B0AEC4", fontWeight: 700 }}>This profile couldn't be found.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="lp-shell-wide">
+      <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#8A8FA0", fontSize: 14, cursor: "pointer", marginBottom: 18, padding: 0, fontWeight: 700 }}>
+        <ArrowLeft size={16} /> Back
+      </button>
+
+      <div style={{ textAlign: "center", marginBottom: 26 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <ProfileAvatar user={{ displayName: profile.displayName, photoURL: profile.photoURL }} size={84} />
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", margin: "14px 0 2px", fontFamily: FONT_DISPLAY }}>{profile.displayName}</h1>
+        {profile.username && <p style={{ fontSize: 13.5, color: "#2E7FD1", margin: 0, fontWeight: 700 }}>@{profile.username}</p>}
+      </div>
+
+      {relationship === "friends" ? (
+        progressMap === null ? (
+          <p style={{ color: "#B0AEC4", fontWeight: 700, textAlign: "center" }}>Loading their progress…</p>
+        ) : (
+          <>
+            <ProfileStatsAndBadges courses={COURSES} progressMap={progressMap} />
+            <button
+              disabled={busy}
+              onClick={async () => { setBusy(true); await removeFriend(user.uid, targetUid); setBusy(false); onBack(); }}
+              className="lp-btn"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#8A8FA0", fontWeight: 800, fontSize: 15, cursor: "pointer" }}
+            >
+              Remove friend
+            </button>
+          </>
+        )
+      ) : (
+        <div style={{ textAlign: "center", padding: "10px 0" }}>
+          <p style={{ fontSize: 14, color: "#8A8FA0", fontWeight: 600, marginBottom: 20 }}>
+            {relationship === "outgoing" ? "Friend request sent — their stats unlock once they accept." : relationship === "incoming" ? "This person sent you a friend request." : "Add them as a friend to see their stats and badges."}
+          </p>
+          {relationship === "outgoing" && (
+            <button disabled={busy} onClick={async () => { setBusy(true); await cancelFriendRequest(user.uid, targetUid); setBusy(false); setRelationship(null); }} className="lp-btn" style={{ padding: "12px 24px", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#8A8FA0", fontWeight: 800, fontSize: 14.5, cursor: "pointer" }}>
+              Cancel request
+            </button>
+          )}
+          {relationship === "incoming" && (
+            <button
+              disabled={busy}
+              onClick={async () => { setBusy(true); const myProfile = await getPublicProfile(user.uid); await acceptFriendRequest(user.uid, myProfile, { uid: targetUid, fromUsername: profile.username, fromDisplayName: profile.displayName, fromPhotoURL: profile.photoURL }); setBusy(false); setRelationship("friends"); }}
+              className="lp-btn" style={{ padding: "12px 24px", borderRadius: 14, border: "none", background: "#1C9450", color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer" }}
+            >
+              Accept request
+            </button>
+          )}
+          {relationship === null && (
+            <button disabled={busy} onClick={async () => { setBusy(true); await sendFriendRequest(user, targetUid); setBusy(false); setRelationship("outgoing"); }} className="lp-btn" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 14, border: "none", background: "#2E7FD1", color: "#fff", fontWeight: 800, fontSize: 14.5, cursor: "pointer" }}>
+              <UserPlus size={16} /> Add friend
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1954,6 +2470,21 @@ export default function LearningPlatform({ user, onSignOut }) {
           progressMap={progressMap}
           onBack={() => setView({ screen: "hub" })}
           onSignOut={onSignOut}
+          onOpenFriends={() => setView({ screen: "friends" })}
+        />
+      )}
+      {view.screen === "friends" && (
+        <FriendsScreen
+          user={user}
+          onBack={() => setView({ screen: "profile" })}
+          onOpenFriendProfile={(uid) => setView({ screen: "friendProfile", targetUid: uid })}
+        />
+      )}
+      {view.screen === "friendProfile" && (
+        <FriendProfileView
+          user={user}
+          targetUid={view.targetUid}
+          onBack={() => setView({ screen: "friends" })}
         />
       )}
       {view.screen === "hub" && (
