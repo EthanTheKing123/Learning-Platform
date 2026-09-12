@@ -46,6 +46,7 @@ export const appliedNutrition = {
               "**Fats** (9 kcal/g): Energy storage, cell membrane structure, hormone production, absorption of fat-soluble vitamins.",
               "**Water**: Not technically a 'macro' but needed in largest amounts. Essential for every cellular process.",
             ]},
+            { type: "diagram", kind: "macroBreakdown" },
             { type: "h", text: "Micronutrient categories" },
             { type: "list", items: [
               "**Fat-soluble vitamins** (A, D, E, K): Stored in body fat; don't need daily intake but can accumulate to toxic levels.",
@@ -279,6 +280,7 @@ export const appliedNutrition = {
               "**Most plant proteins**: Grains (low in lysine), legumes (low in methionine), nuts/seeds.",
               "Can be 'complemented' by eating different sources throughout the day (e.g. rice + beans = complete profile).",
             ]},
+            { type: "diagram", kind: "proteinSourcesChart" },
             { type: "h", text: "Animal vs plant protein" },
             { type: "list", items: [
               "**Animal protein advantages**: Complete, higher bioavailability, more leucine, better for muscle synthesis.",
@@ -419,6 +421,7 @@ export const appliedNutrition = {
               "**Glycemic Load**: GI × serving size — more practical, accounts for portion.",
               "Factors affecting GI: fibre content, fat/protein in meal, processing level, ripeness, cooking method.",
             ]},
+            { type: "diagram", kind: "glycemicResponseChart" },
             { type: "h", text: "Individualised carb approaches" },
             { type: "p", text: "Some advocate lower-glycemic, whole-food carbs over refined options. Root vegetables over grains for many people. Fermented carbs (sourdough, fermented grains) reduce anti-nutrients. Individual tolerance varies: insulin resistant, PCOS, type 2 diabetes may do better on lower-carb diets." },
             { type: "check", q: "What does Glycemic Index measure?", options: ["Calorie content", "How quickly food raises blood sugar", "Fibre content", "Fat content"], correct: 1, explain: "GI rates how quickly a carbohydrate-containing food raises blood glucose levels." },
@@ -654,6 +657,7 @@ export const appliedNutrition = {
           title: "Common Deficiencies and Their Signs",
           blocks: [
             { type: "p", text: "Micronutrient deficiencies are more common than you'd think — even in developed countries. Some are outright deficiencies; others are 'subclinical' (not severe enough for disease, but impairing function)." },
+            { type: "diagram", kind: "commonDeficienciesChart" },
             { type: "h", text: "Vitamin D deficiency" },
             { type: "list", items: [
               "**Prevalence**: ~1 billion people worldwide; very common in winter, northern latitudes, darker skin.",
@@ -774,6 +778,7 @@ export const appliedNutrition = {
               "**Diet**: High protein/salt increases water needs; high fruit/vegetable intake provides water.",
               "**Health status**: Fever, vomiting, diarrhoea increase needs; kidney/heart disease may require restriction.",
             ]},
+            { type: "diagram", kind: "hydrationNeedChart" },
             { type: "h", text: "Better than '8 glasses'" },
             { type: "list", items: [
               "**Urine colour**: Pale yellow = well-hydrated; dark yellow/amber = dehydrated.",
@@ -916,6 +921,7 @@ export const appliedNutrition = {
               "Powers the **ATP-PCr system** — dominant in efforts lasting ~10 seconds or less (sprints, heavy lifts).",
               "Increases intramuscular water content (cell volumisation) → may signal muscle growth.",
             ]},
+            { type: "diagram", kind: "energySystemsTimeline" },
             { type: "h", text: "The evidence" },
             { type: "list", items: [
               "**Strength/power**: Consistently improves 1RM strength, sprint performance, power output (5–15% gains).",
@@ -1318,6 +1324,7 @@ export const appliedNutrition = {
           title: "Gut Health & the Microbiome",
           blocks: [
             { type: "p", text: "Your gut microbiome — the trillions of bacteria, fungi, and viruses living in your digestive tract — plays a crucial role in digestion, immunity, mood, and even chronic disease." },
+            { type: "diagram", kind: "gutDiversityDiagram" },
             { type: "h", text: "What the microbiome actually does" },
             { type: "list", items: [
               "**Digestion**: Breaks down fibre, produces short-chain fatty acids (butyrate, acetate, propionate).",
@@ -1455,6 +1462,7 @@ export const appliedNutrition = {
               "**24–48 hours**: Ketosis ramps up (fat → ketones for brain/heart), autophagy increases (cellular cleanup), growth hormone increases.",
               "**48+ hours**: Deep ketosis, autophagy peaks, stem cell regeneration, immune system reset (animal studies).",
             ]},
+            { type: "diagram", kind: "fastingTimelineChart" },
             { type: "h", text: "Intermittent fasting (16:8, ADF) and the evidence" },
             { type: "list", items: [
               "**16:8 (time-restricted feeding)**: 16 hours fasting, 8-hour eating window. Evidence: improves insulin sensitivity, may aid weight loss, simple to follow.",
