@@ -951,8 +951,11 @@ function Profile({ user, courses, progressMap, onBack, onSignOut, onOpenFriends 
           <ProfileAvatar user={user} size={84} />
         </div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", margin: "14px 0 2px", fontFamily: FONT_DISPLAY }}>{displayName}</h1>
-        {user?.email && <p style={{ fontSize: 13.5, color: "#8A8FA0", margin: 0, fontWeight: 600 }}>{user.email}</p>}
-        {myUsername && <p style={{ fontSize: 13.5, color: "#2E7FD1", margin: "2px 0 0", fontWeight: 700 }}>@{myUsername}</p>}
+        {myUsername ? (
+          <p style={{ fontSize: 13.5, color: "#2E7FD1", margin: 0, fontWeight: 700 }}>@{myUsername}</p>
+        ) : myUsername === null ? (
+          <p style={{ fontSize: 13.5, color: "#B0AEC4", margin: 0, fontWeight: 600 }}>No username yet</p>
+        ) : null}
       </div>
 
       {myUsername === null && (
@@ -1034,17 +1037,30 @@ function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
   const [requests, setRequests] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
   const [search, setSearch] = useState("");
-  const [searchResult, setSearchResult] = useState(null); // { profile, relationship } | "not_found" | null
+  const [searchResult, setSearchResult] = useState(null); // { profile, relationship } | "not_found" | "self" | null
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [busyUid, setBusyUid] = useState(null);
 
+  // Firestore errors carry a `.code` — permission-denied almost always
+  // means the firestore.rules file was updated in the repo but never
+  // actually published in the Firebase console (the repo copy has zero
+  // effect on its own), so call that out specifically rather than just
+  // showing a generic failure.
+  const friendlyError = (err) =>
+    err?.code === "permission-denied"
+      ? "Permission denied — make sure the updated firestore.rules was published in the Firebase console (Firestore Database -> Rules -> Publish), not just saved in the repo."
+      : `Something went wrong (${err?.message || "unknown error"}).`;
+
   const refresh = () => {
-    getFriends(user.uid).then(setFriends);
-    getIncomingRequests(user.uid).then(setRequests);
+    setLoadError("");
+    getFriends(user.uid).then(setFriends).catch((err) => setLoadError(friendlyError(err)));
+    getIncomingRequests(user.uid).then(setRequests).catch((err) => setLoadError(friendlyError(err)));
   };
   useEffect(() => {
     refresh();
-    getPublicProfile(user.uid).then(setMyProfile);
+    getPublicProfile(user.uid).then(setMyProfile).catch(() => {});
   }, [user.uid]);
 
   const handleSearch = async () => {
@@ -1052,12 +1068,15 @@ function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
     if (!name) return;
     setSearching(true);
     setSearchResult(null);
+    setSearchError("");
     try {
       const found = await findUserByUsername(name);
       if (!found) { setSearchResult("not_found"); return; }
       if (found.uid === user.uid) { setSearchResult("self"); return; }
       const relationship = await getRelationship(user.uid, found.uid);
       setSearchResult({ profile: found, relationship });
+    } catch (err) {
+      setSearchError(friendlyError(err));
     } finally {
       setSearching(false);
     }
@@ -1065,7 +1084,7 @@ function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
 
   const withBusy = async (uid, fn) => {
     setBusyUid(uid);
-    try { await fn(); } finally { setBusyUid(null); }
+    try { await fn(); } catch (err) { setLoadError(friendlyError(err)); } finally { setBusyUid(null); }
   };
 
   return (
@@ -1074,6 +1093,12 @@ function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
         <ArrowLeft size={16} /> Profile
       </button>
       <h1 style={{ fontSize: 24, fontWeight: 800, color: "#17213A", marginBottom: 24, fontFamily: FONT_DISPLAY }}>Friends</h1>
+
+      {loadError && (
+        <div style={{ background: "#FCEAEC", border: "2px solid #F3C2CB", borderRadius: 14, padding: "12px 14px", marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: "#A23347", fontWeight: 700, margin: 0, lineHeight: 1.5 }}>{loadError}</p>
+        </div>
+      )}
 
       <div style={{ background: "#fff", border: "2px solid #EAEAF2", borderRadius: 16, padding: 18, marginBottom: 26 }}>
         <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, margin: "0 0 10px" }}>ADD A FRIEND</p>
@@ -1089,6 +1114,7 @@ function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
           </button>
         </div>
 
+        {searchError && <p style={{ fontSize: 13, color: "#A23347", fontWeight: 700, margin: "12px 0 0", lineHeight: 1.5 }}>{searchError}</p>}
         {searchResult === "not_found" && <p style={{ fontSize: 13, color: "#D8465F", fontWeight: 700, margin: "12px 0 0" }}>No one found with that username.</p>}
         {searchResult === "self" && <p style={{ fontSize: 13, color: "#B0AEC4", fontWeight: 700, margin: "12px 0 0" }}>That's you!</p>}
         {searchResult && searchResult !== "not_found" && searchResult !== "self" && (
@@ -1172,7 +1198,7 @@ function FriendsScreen({ user, onBack, onOpenFriendProfile }) {
       <div>
         <p style={{ fontSize: 13, fontWeight: 800, color: "#8A8FA0", letterSpacing: 0.3, marginBottom: 8 }}>YOUR FRIENDS</p>
         {friends === null ? (
-          <p style={{ fontSize: 13.5, color: "#B0AEC4", fontWeight: 600 }}>Loading…</p>
+          <p style={{ fontSize: 13.5, color: "#B0AEC4", fontWeight: 600 }}>{loadError ? "Couldn't load — see the message above." : "Loading…"}</p>
         ) : friends.length === 0 ? (
           <p style={{ fontSize: 13.5, color: "#B0AEC4", fontWeight: 600 }}>No friends yet — search for a username above to add someone.</p>
         ) : (
