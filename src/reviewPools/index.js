@@ -8,5 +8,5 @@
 import { appliedNutritionReviews } from "./appliedNutritionReviews.js";
 
 export const REVIEW_POOLS = {
-  "sleep-science": sleepScienceReviews,
+  "applied-nutrition": appliedNutritionReviews,
 };
