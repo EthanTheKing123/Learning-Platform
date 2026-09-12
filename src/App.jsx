@@ -51,12 +51,20 @@ const REVIEW_BOX_DAYS = [1, 3, 7, 14, 30]; // index 0 = Box 1
 const BOX_COLORS = ["#D8465F", "#D9791F", "#D4A017", "#2E7FD1", "#166A3C"]; // Box 1 (red, urgent) -> Box 5 (green, mastered)
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  // Local calendar date — NOT toISOString(), which is UTC and caused reviews
+  // to appear "ready in an hour" even after local midnight had already passed
+  // for anyone not in UTC (e.g. AEST is 10-11h ahead of UTC).
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function addDays(dateStr, days) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // Built from local y/m/d components (not `new Date(dateStr)`, which parses
+  // a bare "YYYY-MM-DD" as UTC midnight and can drift a calendar day off in
+  // some timezones) so this always lands on the correct local calendar day.
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 // Review dates are stored as calendar days (no time-of-day), but "now" has
 // full precision — so we can still give a genuine hour countdown by treating
@@ -215,8 +223,11 @@ const GLOBAL_STYLE = `
   .lp-pop { animation: lp-pop 0.22s ease; }
   .lp-float { animation: lp-float 4s ease-in-out infinite; }
 
-  .lp-shell-wide { max-width: 640px; margin: 0 auto; padding: 28px 20px 70px; width: 100%; }
-  .lp-shell-narrow { max-width: 640px; margin: 0 auto; padding: 20px 20px 80px; width: 100%; }
+  /* Top padding is bumped up on mobile specifically so in-flow header
+     content (e.g. Hub's top-right button row) clears the fixed profile
+     avatar (top:14, 38px tall) instead of sitting underneath it. */
+  .lp-shell-wide { max-width: 640px; margin: 0 auto; padding: 64px 20px 70px; width: 100%; }
+  .lp-shell-narrow { max-width: 640px; margin: 0 auto; padding: 64px 20px 80px; width: 100%; }
   @media (min-width: 860px) {
     .lp-shell-wide { max-width: 900px; padding: 44px 36px 90px; }
     .lp-shell-narrow { max-width: 720px; padding: 32px 24px 90px; }
@@ -1722,7 +1733,7 @@ function CurriculumView({ course, completedLessons, onBack }) {
    sequential quiz — reusing the same Question component (and its built-in
    explain-on-wrong feedback) that regular lessons use. No new content is
    needed: each question is pulled straight from that lesson's existing quiz. */
-function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
+function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit, isPractice }) {
   const [items] = useState(() =>
     dueList.map((item) => ({ ...item, question: pickReviewQuestion(item.lesson) })).filter((item) => item.question)
   );
@@ -1744,9 +1755,11 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
     return (
       <div className="lp-shell-narrow">
         <div className="lp-pop">
-          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 6 }}>DAILY REVIEW</p>
+          <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 6 }}>{isPractice ? "PRACTICE" : "DAILY REVIEW"}</p>
           <h1 style={{ fontSize: 25, fontWeight: 800, color: "#17213A", marginBottom: 14, fontFamily: FONT_DISPLAY }}>{correctCount}/{items.length} correct</h1>
-          {missed.length === 0 ? (
+          {isPractice ? (
+            <p style={{ fontSize: 15, color: "#8A8FA0", fontWeight: 700, marginBottom: 20 }}>Nice work — this was just practice, so it didn't change your review schedule.</p>
+          ) : missed.length === 0 ? (
             <p style={{ fontSize: 15, color: "#166A3C", fontWeight: 700, marginBottom: 20 }}>Perfect — every one of these just moved up a review box. 🎉</p>
           ) : (
             <>
@@ -1776,7 +1789,7 @@ function ReviewSession({ dueList, onAnswer, onRevisitLesson, onExit }) {
   const current = items[index];
   return (
     <div className="lp-shell-narrow">
-      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>DAILY REVIEW · {index + 1} of {items.length}</p>
+      <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.3, color: "#D9791F", marginBottom: 4 }}>{isPractice ? "PRACTICE" : "DAILY REVIEW"} · {index + 1} of {items.length}</p>
       <p style={{ fontSize: 12.5, color: "#B0AEC4", fontWeight: 700, marginBottom: 16 }}>{current.course.title} · Lesson {current.lesson.id} — {current.lesson.title}</p>
       <Question
         key={current.course.id + current.lesson.id}
@@ -2435,7 +2448,12 @@ export default function LearningPlatform({ user, onSignOut }) {
   // Called once per question during a daily review session — advances (or
   // resets) that lesson's Leitner box based on whether it was answered
   // correctly, and persists it the same way completeLesson does.
-  const recordReview = useCallback((courseId, lessonId, wasCorrect) => {
+  const recordReview = useCallback((courseId, lessonId, wasCorrect, isPractice) => {
+    // Practice sessions (launched from the "Practice" button on an item
+    // that isn't actually due yet) are for the person's own benefit only —
+    // they must never advance the spaced-repetition schedule, or someone
+    // could just keep practicing the same item to manually push its box up.
+    if (isPractice) return;
     setProgressMap((prev) => {
       const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
       const nextEntry = advanceReviewEntry(cur.review?.[lessonId], wasCorrect);
@@ -2573,7 +2591,8 @@ export default function LearningPlatform({ user, onSignOut }) {
       {view.screen === "review" && (
         <ReviewSession
           dueList={view.forcedList || getDueReviews(visibleCourses, progressMap)}
-          onAnswer={recordReview}
+          isPractice={!!view.forcedList}
+          onAnswer={(courseId, lessonId, correct) => recordReview(courseId, lessonId, correct, !!view.forcedList)}
           onRevisitLesson={(course, module, lesson) => setView({ screen: "lesson", course, module, lesson })}
           onExit={() => setView({ screen: view.returnTo || "hub" })}
         />
