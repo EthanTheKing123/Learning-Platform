@@ -1,70 +1,62 @@
-// Progress storage — now per-account via Firestore, keyed by the signed-in
-// user's ID. App.jsx and the course files don't know or care that this
-// changed; they just call loadProgress(courseId) / saveProgress(courseId, p).
-import { auth, db } from "./firebase.js";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-const localKey = (courseId) => `progress:${courseId}`;
+    // Username -> uid lookup. Get-only, and only by an exact name someone
+    // already typed in — there is no "list all usernames", so this can't
+    // be used to enumerate who's on the platform.
+    match /usernames/{name} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/usernames/$(name));
+      allow update, delete: if false; // usernames are permanent for now
+    }
 
-function readLocal(courseId) {
-  try {
-    const raw = localStorage.getItem(localKey(courseId));
-    return raw ? JSON.parse(raw) : { completedLessons: [] };
-  } catch {
-    return { completedLessons: [] };
-  }
-}
+    match /users/{userId} {
 
-export async function loadProgress(courseId) {
-  const uid = auth.currentUser?.uid;
-  // Shouldn't normally happen — AuthGate blocks the app until signed in —
-  // but fall back to local storage rather than crash if it ever does.
-  if (!uid) return readLocal(courseId);
+      // Public profile: username, displayName, photoURL. Email is never
+      // written here, so "viewable minus the email address" is true by
+      // construction — there's nothing to filter out at read time.
+      match /publicProfile/info {
+        allow get: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
 
-  try {
-    const ref = doc(db, "users", uid, "progress", courseId);
-    const snap = await getDoc(ref);
-    if (snap.exists()) return snap.data();
+      // The real progress/stats/badges data. Owner always has full
+      // access. An accepted friend gets read-only access, proven by
+      // existing in the owner's own friends list. Everyone else: denied.
+      match /progress/{courseId} {
+        allow read: if request.auth != null
+          && (request.auth.uid == userId
+              || exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)));
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
 
-    // First time this account has opened this course: if there's leftover
-    // progress from before accounts existed (same browser), carry it over
-    // once instead of silently losing it.
-    const migrated = readLocal(courseId);
-    await setDoc(ref, migrated);
-    return migrated;
-  } catch (err) {
-    console.error("Failed to load progress from Firestore", err);
-    return readLocal(courseId);
-  }
-}
+      // Incoming friend requests, keyed by the sender's uid. Only the
+      // sender can create their own request (and can't send one to
+      // themselves). Sender or receiver can read/cancel a single request.
+      // Only the receiver can list the full incoming set.
+      match /friendRequests/{senderUid} {
+        allow get: if request.auth != null && (request.auth.uid == userId || request.auth.uid == senderUid);
+        allow list: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == senderUid && senderUid != userId;
+        allow delete: if request.auth != null && (request.auth.uid == userId || request.auth.uid == senderUid);
+      }
 
-export async function saveProgress(courseId, progress) {
-  const uid = auth.currentUser?.uid;
-  if (!uid) {
-    try { localStorage.setItem(localKey(courseId), JSON.stringify(progress)); } catch { /* best-effort */ }
-    return;
-  }
-  try {
-    const ref = doc(db, "users", uid, "progress", courseId);
-    await setDoc(ref, progress);
-  } catch (err) {
-    console.error("Failed to save progress to Firestore", err);
-  }
-}
-
-// Read-only lookup of someone ELSE's progress for one course — used for
-// viewing a friend's profile. Deliberately separate from loadProgress
-// above: no localStorage fallback and no migration (that only makes sense
-// for your own account), and it returns null rather than an empty
-// progress object when access is denied, so the caller can tell "they
-// have zero progress" apart from "I'm not allowed to see this" (e.g. not
-// actually friends yet — firestore.rules is what actually enforces this;
-// this null just lets the UI react to it sensibly).
-export async function loadFriendProgress(friendUid, courseId) {
-  try {
-    const snap = await getDoc(doc(db, "users", friendUid, "progress", courseId));
-    return snap.exists() ? snap.data() : { completedLessons: [] };
-  } catch {
-    return null;
+      // Mutual friendship edges, stored on both people's users/{uid}
+      // documents. Creating an edge requires a real friend request to
+      // exist between the two people in EITHER direction — so nobody can
+      // inject themselves into someone's friends list unrequested.
+      match /friends/{friendId} {
+        allow get: if request.auth != null && (request.auth.uid == userId || request.auth.uid == friendId);
+        allow list: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+          && (request.auth.uid == userId || request.auth.uid == friendId)
+          && (exists(/databases/$(database)/documents/users/$(userId)/friendRequests/$(friendId))
+              || exists(/databases/$(database)/documents/users/$(friendId)/friendRequests/$(userId)));
+        allow delete: if request.auth != null && (request.auth.uid == userId || request.auth.uid == friendId);
+      }
+    }
   }
 }
