@@ -677,11 +677,12 @@ function MiniStars({ count, size = 13 }) {
 
 /* ============================================================
    PROFILE — cumulative badges for total stars earned and total
-   lessons completed (bronze -> emerald, same bronze/silver/gold
-   shades as the per-lesson star rating above, extended upward with
-   diamond/ruby/emerald), plus one permanent badge per fully-
-   completed course. Thresholds below are a starting point — easy
-   to retune later, they're just plain numbers in one place.
+   lessons completed, plus one permanent badge per fully-completed
+   course. 15 tiers, Bronze through Mythic — each step up costs
+   progressively more (the gap between tiers grows every time), so
+   early tiers come quickly and later ones are genuine long-term
+   goals rather than a flat grind. Thresholds are plain numbers in
+   one place, easy to retune later.
    ============================================================ */
 const BADGE_TIERS = [
   { name: "Bronze", color: "#C88A55", starsNeeded: 10, lessonsNeeded: 5 },
@@ -689,7 +690,16 @@ const BADGE_TIERS = [
   { name: "Gold", color: "#E9C13B", starsNeeded: 50, lessonsNeeded: 30 },
   { name: "Diamond", color: "#5FD1E8", starsNeeded: 100, lessonsNeeded: 50 },
   { name: "Ruby", color: "#B8123F", starsNeeded: 200, lessonsNeeded: 75 },
-  { name: "Emerald", color: "#0FA968", starsNeeded: 350, lessonsNeeded: 100 },
+  { name: "Emerald", color: "#0FA968", starsNeeded: 350, lessonsNeeded: 105 },
+  { name: "Sapphire", color: "#2A5FD4", starsNeeded: 500, lessonsNeeded: 140 },
+  { name: "Amethyst", color: "#8B3FE0", starsNeeded: 700, lessonsNeeded: 180 },
+  { name: "Pearl", color: "#EDE7D9", starsNeeded: 950, lessonsNeeded: 225 },
+  { name: "Platinum", color: "#C7CDD6", starsNeeded: 1250, lessonsNeeded: 275 },
+  { name: "Obsidian", color: "#17161D", starsNeeded: 1600, lessonsNeeded: 330 },
+  { name: "Celestite", color: "#6FD3E8", starsNeeded: 2000, lessonsNeeded: 390 },
+  { name: "Aurora", color: "#29D1A8", starsNeeded: 2450, lessonsNeeded: 455 },
+  { name: "Solar flare", color: "#FF6A35", starsNeeded: 2950, lessonsNeeded: 525 },
+  { name: "Mythic", color: "#FFD34D", starsNeeded: 3500, lessonsNeeded: 600 },
 ];
 // Index of the highest tier a count qualifies for, -1 if none yet.
 function currentTierIndex(count, key) {
@@ -854,18 +864,25 @@ function Medal({ earned, color, size = 52, iconSize = 22, onClick }) {
   );
 }
 
+// Shows every EARNED tier plus exactly one locked tile for whatever comes
+// next — never the full remaining ladder. This is deliberate: revealing
+// all 15 tiers up front (including far-off ones like Mythic) turns the
+// row into a long grey wall of locks instead of a near-term goal. Once
+// that next tile is reached it unlocks and a new single locked tile
+// appears after it, so the row grows one badge at a time as you play.
 function BadgeRow({ title, count, needKey, unit, dates, onSelect }) {
   const earnedIdx = currentTierIndex(count, needKey);
+  const visibleTiers = BADGE_TIERS.filter((_, i) => i <= earnedIdx + 1);
   return (
     <div style={{ marginBottom: 24 }}>
       <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3, color: "#8A8FA0", marginBottom: 12 }}>{title}</p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {BADGE_TIERS.map((tier, i) => {
+        {visibleTiers.map((tier, i) => {
           const earned = i <= earnedIdx;
           const isNext = i === earnedIdx + 1;
           return (
             <div key={tier.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 74 }}>
-              <Medal earned={earned} color={tier.color} onClick={() => onSelect(tier, dates[i])} />
+              <Medal earned={earned} color={tier.color} onClick={() => earned && onSelect(tier, dates[i])} />
               <p style={{ fontSize: 11.5, fontWeight: 800, color: earned ? "#17213A" : "#B0AEC4", margin: "4px 0 0", textAlign: "center" }}>{tier.name}</p>
               {isNext && <p style={{ fontSize: 9.5, color: "#B0AEC4", margin: "1px 0 0", textAlign: "center" }}>{tier[needKey]} {unit}</p>}
             </div>
