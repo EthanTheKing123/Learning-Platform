@@ -1675,9 +1675,10 @@ function CourseMap({ course, completedLessons, onBack, onOpenModule, onSeeCurric
           return (
             <React.Fragment key={m.id}>
               {isNewLevel && (
-                <div style={{ background: course.ink, color: "#fff", borderRadius: 16, padding: "10px 18px", margin: "22px 0 24px", textAlign: "center" }}>
-                  <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, opacity: 0.7, margin: 0 }}>LEVEL {levelNumber}</p>
-                  <p style={{ fontSize: 15.5, fontWeight: 800, margin: "2px 0 0", fontFamily: FONT_DISPLAY }}>{m.section}</p>
+                <div style={{ textAlign: "center", margin: i === 0 ? "0 0 26px" : "40px 0 26px" }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "#B0AEC4", margin: "0 0 4px" }}>SECTION {levelNumber}</p>
+                  <p style={{ fontSize: 16.5, fontWeight: 800, color: course.ink, margin: 0, fontFamily: FONT_DISPLAY }}>{m.section}</p>
+                  <div style={{ width: 36, height: 3, borderRadius: 2, background: course.accent, margin: "10px auto 0" }} />
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginLeft: offset, marginBottom: 26 }}>
