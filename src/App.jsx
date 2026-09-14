@@ -2443,12 +2443,115 @@ function TopicCourses({ topic, courses, progressMap, onOpenDetail, onBack }) {
   );
 }
 
-function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpenLibrary, onOpenReviewHub }) {
+/* ============================================================
+   ONBOARDING TUTORIAL — spotlight walkthrough of the real Hub elements
+   ============================================================
+   Targets actual DOM refs on the Hub (not a generic modal), so the
+   highlight ring sits exactly on the real star count, the Spaced Revision
+   button, and the Explore Courses card. Auto-shows once (tracked via the
+   settings doc, same trick as the daily-review limit) and is replayable
+   any time from the small "?" button next to the star count. */
+const TUTORIAL_STEPS = [
+  { target: null, title: "Welcome to your Academy 👋", body: "A quick look around before you dive in — four things worth knowing." },
+  { target: "star", title: "Your stars", body: "One star for every lesson you finish, across every course you're enrolled in." },
+  { target: "brain", title: "Spaced Revision", body: "Tap here any time — short daily reviews that keep what you've learned from fading, based on how well you actually know it." },
+  { target: "explore", title: "Explore Courses", body: "Everything starts here — browse the library and enroll in a course to get going." },
+  { target: null, title: "That's it!", body: "You're all set. Replay this tour any time from the little ? next to your stars." },
+];
+
+function TutorialOverlay({ targetRefs, onDone, onSkip }) {
+  const [step, setStep] = useState(0);
+  const [rect, setRect] = useState(null);
+  const current = TUTORIAL_STEPS[step];
+  const isLast = step === TUTORIAL_STEPS.length - 1;
+
+  useEffect(() => {
+    function measure() {
+      const el = current.target ? targetRefs[current.target]?.current : null;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      } else {
+        setRect(null);
+      }
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [step, current.target, targetRefs]);
+
+  const cardWidth = Math.min(300, (typeof window !== "undefined" ? window.innerWidth : 340) - 32);
+  let cardStyle;
+  if (rect && typeof window !== "undefined") {
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placeBelow = spaceBelow > 220;
+    const top = placeBelow ? rect.bottom + 18 : Math.max(16, rect.top - 210);
+    const left = Math.min(Math.max(16, rect.left), window.innerWidth - cardWidth - 16);
+    cardStyle = { position: "fixed", top, left, width: cardWidth, zIndex: 10000 };
+  } else {
+    cardStyle = { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: cardWidth, zIndex: 10000 };
+  }
+
+  return (
+    <>
+      <div style={{ position: "fixed", inset: 0, background: "rgba(23,33,58,0.72)", zIndex: 9998 }} />
+      {rect && (
+        <div
+          style={{
+            position: "fixed", top: rect.top - 8, left: rect.left - 8, width: rect.width + 16, height: rect.height + 16,
+            borderRadius: 16, boxShadow: "0 0 0 9999px rgba(23,33,58,0.72), 0 0 0 3px #fff",
+            pointerEvents: "none", zIndex: 9999, transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease",
+          }}
+        />
+      )}
+      <div style={{ ...cardStyle, background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 12px 32px rgba(23,33,58,0.28)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, color: "#D9791F", margin: 0 }}>STEP {step + 1} OF {TUTORIAL_STEPS.length}</p>
+          <button onClick={onSkip} className="lp-btn" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#B0AEC4" }} aria-label="Skip tutorial">
+            <X size={16} />
+          </button>
+        </div>
+        <p style={{ fontSize: 17, fontWeight: 800, color: "#17213A", margin: "0 0 8px", fontFamily: FONT_DISPLAY }}>{current.title}</p>
+        <p style={{ fontSize: 14, color: "#5A5F6E", margin: "0 0 18px", lineHeight: 1.5, fontWeight: 500 }}>{current.body}</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 5 }}>
+            {TUTORIAL_STEPS.map((_, i) => (
+              <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i === step ? "#D9791F" : "#E7E5EE" }} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {step > 0 && (
+              <button onClick={() => setStep((s) => s - 1)} className="lp-btn" style={{ padding: "9px 14px", borderRadius: 11, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                Back
+              </button>
+            )}
+            <button
+              onClick={() => (isLast ? onDone() : setStep((s) => s + 1))}
+              className="lp-btn"
+              style={{ padding: "9px 18px", borderRadius: 11, border: "none", background: "#17213A", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: FONT_DISPLAY }}
+            >
+              {isLast ? "Got it" : "Next"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Hub({ courses, progressMap, dueCount, showTutorial, onTutorialDone, onReplayTutorial, onOpenCourse, onOpenReview, onOpenLibrary, onOpenReviewHub }) {
   const totalStars = Object.values(progressMap).reduce(
     (n, p) => n + Object.values(p.scores || {}).reduce((s, entry) => s + starsForScore(entry.score, entry.total), 0),
     0
   );
   const enrolledCourses = courses.filter((c) => progressMap[c.id]?.enrolled);
+  const starRef = useRef(null);
+  const brainRef = useRef(null);
+  const exploreRef = useRef(null);
   return (
     <div className="lp-shell-wide">
       <div>
@@ -2460,10 +2563,13 @@ function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpe
             <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: 0.4, color: "#8A8FA0", margin: 0 }}>YOUR ACADEMY</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={onOpenReviewHub} className="lp-btn" title="Spaced Revision" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 20, border: "none", background: "#F1EEFC", cursor: "pointer" }}>
+            <button onClick={onReplayTutorial} className="lp-btn" title="Replay tutorial" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 20, border: "2px solid #EAEAF2", background: "#fff", color: "#8A8FA0", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+              ?
+            </button>
+            <button ref={brainRef} onClick={onOpenReviewHub} className="lp-btn" title="Spaced Revision" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 20, border: "none", background: "#F1EEFC", cursor: "pointer" }}>
               <Brain size={16} color="#6A4FC2" />
             </button>
-            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#FFF7E0", borderRadius: 20, padding: "7px 13px" }}>
+            <div ref={starRef} style={{ display: "flex", alignItems: "center", gap: 5, background: "#FFF7E0", borderRadius: 20, padding: "7px 13px" }}>
               <Star size={15} color="#D9791F" fill="#D9791F" />
               <span style={{ fontSize: 14, fontWeight: 800, color: "#17213A" }}>{totalStars}</span>
             </div>
@@ -2521,6 +2627,7 @@ function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpe
           })}
 
           <button
+            ref={exploreRef}
             onClick={onOpenLibrary}
             className="lp-btn"
             style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, background: "#F4F4F7", border: "2px dashed #D7D5E0", borderRadius: 20, padding: 22, cursor: "pointer", textAlign: "center", minHeight: 140 }}
@@ -2533,6 +2640,9 @@ function Hub({ courses, progressMap, dueCount, onOpenCourse, onOpenReview, onOpe
           </button>
         </div>
       </div>
+      {showTutorial && (
+        <TutorialOverlay targetRefs={{ star: starRef, brain: brainRef, explore: exploreRef }} onDone={onTutorialDone} onSkip={onTutorialDone} />
+      )}
     </div>
   );
 }
@@ -2558,7 +2668,12 @@ export default function LearningPlatform({ user, onSignOut }) {
   const [view, setView] = useState({ screen: "hub" }); // hub | course | curriculum | module | lesson | review | library | courseDetail | reviewHub | reviewAnalytics | reviewExplainer
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
-  const [dailyLimit, setDailyLimitState] = useState(DEFAULT_DAILY_LIMIT);
+  // One settings doc, two fields — kept together deliberately: saveProgress
+  // fully replaces whatever's in the doc (no partial/merge write), so
+  // changing just one field while forgetting the other would silently wipe
+  // it. updateSettings below always writes both, whichever one changed.
+  const [settings, setSettings] = useState({ dailyReviewLimit: DEFAULT_DAILY_LIMIT, tutorialSeen: true });
+  const dailyLimit = settings.dailyReviewLimit;
 
   // A course with no `restrictedTo` field is visible to everyone. A course
   // with `restrictedTo: ["someone@email.com"]` only shows for that account.
@@ -2577,21 +2692,34 @@ export default function LearningPlatform({ user, onSignOut }) {
         return [c.id, backfilled];
       }));
       setProgressMap(Object.fromEntries(entries));
-      const settings = await loadProgress(SETTINGS_DOC_ID);
-      if (settings?.dailyReviewLimit) setDailyLimitState(Math.max(MIN_DAILY_LIMIT, settings.dailyReviewLimit));
+      const loadedSettings = await loadProgress(SETTINGS_DOC_ID);
+      // tutorialSeen defaults to false (shows the tour) for anyone who's
+      // never had this field set — which includes brand-new sign-ups AND,
+      // one time only, every existing account the moment this ships. That's
+      // an acceptable one-off since it's a single-click Skip, not a real cost.
+      setSettings({
+        dailyReviewLimit: loadedSettings?.dailyReviewLimit ? Math.max(MIN_DAILY_LIMIT, loadedSettings.dailyReviewLimit) : DEFAULT_DAILY_LIMIT,
+        tutorialSeen: !!loadedSettings?.tutorialSeen,
+      });
       setLoaded(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
-  // Persists immediately (same pattern as every other progress write here) —
-  // clamped to the minimum so someone can't accidentally set it to 0 and
-  // never see a review again.
-  const setDailyLimit = useCallback((newLimit) => {
-    const clamped = Math.max(MIN_DAILY_LIMIT, newLimit);
-    setDailyLimitState(clamped);
-    saveProgress(SETTINGS_DOC_ID, { dailyReviewLimit: clamped });
+  // Merges into current settings and persists the WHOLE object every time —
+  // never just the one field that changed — so the other field can't get
+  // silently dropped by the next save.
+  const updateSettings = useCallback((partial) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...partial };
+      if (next.dailyReviewLimit != null) next.dailyReviewLimit = Math.max(MIN_DAILY_LIMIT, next.dailyReviewLimit);
+      saveProgress(SETTINGS_DOC_ID, next);
+      return next;
+    });
   }, []);
+  const setDailyLimit = useCallback((newLimit) => updateSettings({ dailyReviewLimit: newLimit }), [updateSettings]);
+  const markTutorialSeen = useCallback(() => updateSettings({ tutorialSeen: true }), [updateSettings]);
+  const replayTutorial = useCallback(() => updateSettings({ tutorialSeen: false }), [updateSettings]);
 
   const completeLesson = useCallback((courseId, lessonId, score, total) => {
     setProgressMap((prev) => {
@@ -2734,6 +2862,9 @@ export default function LearningPlatform({ user, onSignOut }) {
           courses={visibleCourses}
           progressMap={progressMap}
           dueCount={getDueReviews(visibleCourses, progressMap).length}
+          showTutorial={!settings.tutorialSeen}
+          onTutorialDone={markTutorialSeen}
+          onReplayTutorial={replayTutorial}
           onOpenCourse={(c) => setView({ screen: "course", course: c })}
           onOpenReview={() => setView({ screen: "review" })}
           onOpenLibrary={() => setView({ screen: "library" })}
