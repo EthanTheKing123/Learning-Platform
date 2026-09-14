@@ -120,10 +120,22 @@ function pickReviewQuestion(course, lesson, lastQuestionIndex) {
   const index = (dayIndex + lesson.id.length) % quiz.length;
   return { question: quiz[index], index };
 }
+// A course's lessons only ever appear in spaced repetition if BOTH:
+// - it's still enrolled (unenrolling stops its reviews automatically, no
+//   separate step needed), AND
+// - its reviewEnabled flag isn't explicitly false (undefined/missing means
+//   "on" — this is a fine-grained pause independent of enrollment, e.g.
+//   staying enrolled and visible on the homepage but muting its reviews).
+// Progress, boxes, and history are never touched by either toggle — this
+// only ever changes what SHOWS in the review system, never what's stored.
+function isCourseReviewable(course, progressMap) {
+  const p = progressMap[course.id];
+  return !!p?.enrolled && p?.reviewEnabled !== false;
+}
 function getDueReviews(courses, progressMap) {
   const today = todayStr();
   const due = [];
-  courses.forEach((course) => {
+  courses.filter((c) => isCourseReviewable(c, progressMap)).forEach((course) => {
     const review = progressMap[course.id]?.review || {};
     course.modules.forEach((module) => {
       module.lessons.forEach((lesson) => {
@@ -137,12 +149,14 @@ function getDueReviews(courses, progressMap) {
   due.sort((a, b) => a.nextDue.localeCompare(b.nextDue));
   return due;
 }
-// Every lesson currently tracked by spaced repetition, due or not — powers
-// the Review Hub's browse list (so someone can practice ahead of schedule)
-// and the analytics page (box distribution, times-reviewed, accuracy).
+// Every lesson currently tracked by spaced repetition (and still reviewable
+// per isCourseReviewable above), due or not — powers the Review Hub's
+// browse list and the analytics page (box distribution, times-reviewed,
+// accuracy). A course paused via reviewEnabled or unenrolled disappears
+// from here too, not just from the daily session.
 function getAllReviewItems(courses, progressMap) {
   const items = [];
-  courses.forEach((course) => {
+  courses.filter((c) => isCourseReviewable(c, progressMap)).forEach((course) => {
     const review = progressMap[course.id]?.review || {};
     course.modules.forEach((module) => {
       module.lessons.forEach((lesson) => {
@@ -677,12 +691,11 @@ function MiniStars({ count, size = 13 }) {
 
 /* ============================================================
    PROFILE — cumulative badges for total stars earned and total
-   lessons completed, plus one permanent badge per fully-completed
-   course. 15 tiers, Bronze through Mythic — each step up costs
-   progressively more (the gap between tiers grows every time), so
-   early tiers come quickly and later ones are genuine long-term
-   goals rather than a flat grind. Thresholds are plain numbers in
-   one place, easy to retune later.
+   lessons completed (bronze -> emerald, same bronze/silver/gold
+   shades as the per-lesson star rating above, extended upward with
+   diamond/ruby/emerald), plus one permanent badge per fully-
+   completed course. Thresholds below are a starting point — easy
+   to retune later, they're just plain numbers in one place.
    ============================================================ */
 const BADGE_TIERS = [
   { name: "Bronze", color: "#C88A55", starsNeeded: 10, lessonsNeeded: 5 },
@@ -690,16 +703,7 @@ const BADGE_TIERS = [
   { name: "Gold", color: "#E9C13B", starsNeeded: 50, lessonsNeeded: 30 },
   { name: "Diamond", color: "#5FD1E8", starsNeeded: 100, lessonsNeeded: 50 },
   { name: "Ruby", color: "#B8123F", starsNeeded: 200, lessonsNeeded: 75 },
-  { name: "Emerald", color: "#0FA968", starsNeeded: 350, lessonsNeeded: 105 },
-  { name: "Sapphire", color: "#2A5FD4", starsNeeded: 500, lessonsNeeded: 140 },
-  { name: "Amethyst", color: "#8B3FE0", starsNeeded: 700, lessonsNeeded: 180 },
-  { name: "Pearl", color: "#EDE7D9", starsNeeded: 950, lessonsNeeded: 225 },
-  { name: "Platinum", color: "#C7CDD6", starsNeeded: 1250, lessonsNeeded: 275 },
-  { name: "Obsidian", color: "#17161D", starsNeeded: 1600, lessonsNeeded: 330 },
-  { name: "Celestite", color: "#6FD3E8", starsNeeded: 2000, lessonsNeeded: 390 },
-  { name: "Aurora", color: "#29D1A8", starsNeeded: 2450, lessonsNeeded: 455 },
-  { name: "Solar flare", color: "#FF6A35", starsNeeded: 2950, lessonsNeeded: 525 },
-  { name: "Mythic", color: "#FFD34D", starsNeeded: 3500, lessonsNeeded: 600 },
+  { name: "Emerald", color: "#0FA968", starsNeeded: 350, lessonsNeeded: 100 },
 ];
 // Index of the highest tier a count qualifies for, -1 if none yet.
 function currentTierIndex(count, key) {
@@ -864,25 +868,18 @@ function Medal({ earned, color, size = 52, iconSize = 22, onClick }) {
   );
 }
 
-// Shows every EARNED tier plus exactly one locked tile for whatever comes
-// next — never the full remaining ladder. This is deliberate: revealing
-// all 15 tiers up front (including far-off ones like Mythic) turns the
-// row into a long grey wall of locks instead of a near-term goal. Once
-// that next tile is reached it unlocks and a new single locked tile
-// appears after it, so the row grows one badge at a time as you play.
 function BadgeRow({ title, count, needKey, unit, dates, onSelect }) {
   const earnedIdx = currentTierIndex(count, needKey);
-  const visibleTiers = BADGE_TIERS.filter((_, i) => i <= earnedIdx + 1);
   return (
     <div style={{ marginBottom: 24 }}>
       <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 0.3, color: "#8A8FA0", marginBottom: 12 }}>{title}</p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {visibleTiers.map((tier, i) => {
+        {BADGE_TIERS.map((tier, i) => {
           const earned = i <= earnedIdx;
           const isNext = i === earnedIdx + 1;
           return (
             <div key={tier.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 74 }}>
-              <Medal earned={earned} color={tier.color} onClick={() => earned && onSelect(tier, dates[i])} />
+              <Medal earned={earned} color={tier.color} onClick={() => onSelect(tier, dates[i])} />
               <p style={{ fontSize: 11.5, fontWeight: 800, color: earned ? "#17213A" : "#B0AEC4", margin: "4px 0 0", textAlign: "center" }}>{tier.name}</p>
               {isNext && <p style={{ fontSize: 9.5, color: "#B0AEC4", margin: "1px 0 0", textAlign: "center" }}>{tier[needKey]} {unit}</p>}
             </div>
@@ -2201,8 +2198,10 @@ function ReviewExplainer({ onBack }) {
    yet) and falls back to sensible computed/neutral defaults when absent,
    so this works correctly today without needing every course file
    touched. Curating real values per course is a natural follow-up. */
-function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, onBack }) {
+function CourseDetail({ course, courses, progressMap, onEnroll, onUnenroll, onSetReviewEnabled, onOpenCourse, onBack }) {
+  const [confirmingUnenroll, setConfirmingUnenroll] = useState(false);
   const enrolled = !!progressMap[course.id]?.enrolled;
+  const reviewEnabled = progressMap[course.id]?.reviewEnabled !== false; // undefined/missing = on
   const lessonCount = course.modules.reduce((n, m) => n + m.lessons.length, 0);
   const estMinutes = course.estimatedMinutes || lessonCount * 8; // ~8 min/lesson heuristic when not curated
   const estLabel = estMinutes < 60 ? `${estMinutes} min` : `${(estMinutes / 60).toFixed(estMinutes % 60 === 0 ? 0 : 1)} hrs`;
@@ -2268,9 +2267,46 @@ function CourseDetail({ course, courses, progressMap, onEnroll, onOpenCourse, on
       )}
 
       {enrolled ? (
-        <button onClick={() => onOpenCourse(course)} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 15.5, cursor: "pointer", fontFamily: FONT_DISPLAY, marginTop: 12 }}>
-          Continue learning
-        </button>
+        <>
+          <button onClick={() => onOpenCourse(course)} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 15.5, cursor: "pointer", fontFamily: FONT_DISPLAY, marginTop: 12 }}>
+            Continue learning
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F6F7FB", borderRadius: 14, padding: "12px 16px", marginTop: 14 }}>
+            <div>
+              <p style={{ fontSize: 13.5, fontWeight: 800, color: "#17213A", margin: 0 }}>Daily review</p>
+              <p style={{ fontSize: 12, color: "#8A8FA0", margin: "2px 0 0", fontWeight: 600 }}>{reviewEnabled ? "This course's lessons can appear in your daily review." : "Paused — won't appear in daily review, but progress and boxes are untouched."}</p>
+            </div>
+            <button
+              onClick={() => onSetReviewEnabled(course.id, !reviewEnabled)}
+              className="lp-btn"
+              style={{ flexShrink: 0, width: 46, height: 26, borderRadius: 999, border: "none", background: reviewEnabled ? "#166A3C" : "#D7D5E0", position: "relative", cursor: "pointer", padding: 0 }}
+              aria-label={reviewEnabled ? "Pause daily review for this course" : "Resume daily review for this course"}
+            >
+              <span style={{ position: "absolute", top: 3, left: reviewEnabled ? 23 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.15s ease" }} />
+            </button>
+          </div>
+
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid #EAEAF2" }}>
+            {!confirmingUnenroll ? (
+              <button onClick={() => setConfirmingUnenroll(true)} className="lp-btn" style={{ background: "none", border: "none", color: "#B0AEC4", fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+                Unenroll from this course
+              </button>
+            ) : (
+              <div style={{ background: "#FFF5F5", border: "2px solid #FBD5D5", borderRadius: 14, padding: 16 }}>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: "#8A3030", margin: "0 0 12px" }}>This removes it from your homepage — your progress, scores, and review history are all kept. Re-enroll anytime from the Library to pick up right where you left off.</p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => { onUnenroll(course.id); setConfirmingUnenroll(false); onBack(); }} className="lp-btn" style={{ padding: "9px 16px", borderRadius: 11, border: "none", background: "#C13B3B", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                    Yes, unenroll
+                  </button>
+                  <button onClick={() => setConfirmingUnenroll(false)} className="lp-btn" style={{ padding: "9px 16px", borderRadius: 11, border: "2px solid #EAEAF2", background: "#fff", color: "#17213A", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         <button onClick={() => onEnroll(course.id)} className="lp-btn" style={{ width: "100%", padding: "14px 0", borderRadius: 14, border: "none", background: course.accent, color: textOn(course.accent), fontWeight: 800, fontSize: 15.5, cursor: "pointer", fontFamily: FONT_DISPLAY, boxShadow: `0 4px 0 ${darken(course.accent, 0.25)}`, marginTop: 12 }}>
           Enroll in this course
@@ -2598,13 +2634,40 @@ export default function LearningPlatform({ user, onSignOut }) {
   }, []);
 
   // Adds a course to the person's homepage. Just one flag on that course's
-  // existing progress object — once set, it stays set (nothing ever
-  // un-enrolls a course), so it's a permanent part of their profile the
-  // same way completed lessons are.
+  // existing progress object.
   const enrollCourse = useCallback((courseId) => {
     setProgressMap((prev) => {
       const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
       const next = { ...cur, enrolled: true };
+      saveProgress(courseId, next);
+      return { ...prev, [courseId]: next };
+    });
+  }, []);
+
+  // Removes a course from the homepage. Deliberately does NOT touch
+  // completedLessons, scores, review, or reviewEnabled — re-enrolling
+  // later (via the Library) picks up exactly where it left off. Since
+  // isCourseReviewable requires `enrolled`, this also automatically stops
+  // the course's lessons from appearing in spaced repetition — no separate
+  // step needed for that part.
+  const unenrollCourse = useCallback((courseId) => {
+    setProgressMap((prev) => {
+      const cur = prev[courseId];
+      if (!cur) return prev; // nothing to unenroll from
+      const next = { ...cur, enrolled: false };
+      saveProgress(courseId, next);
+      return { ...prev, [courseId]: next };
+    });
+  }, []);
+
+  // Independent of enrollment — pauses/resumes just this course's reviews
+  // while it stays fully visible on the homepage. Box progress, due dates,
+  // and history are untouched; toggling this back on picks up right where
+  // it left off (a lesson due 3 days ago while paused is just due today).
+  const setReviewEnabled = useCallback((courseId, enabled) => {
+    setProgressMap((prev) => {
+      const cur = prev[courseId] || { completedLessons: [], scores: {}, review: {} };
+      const next = { ...cur, reviewEnabled: enabled };
       saveProgress(courseId, next);
       return { ...prev, [courseId]: next };
     });
@@ -2700,6 +2763,8 @@ export default function LearningPlatform({ user, onSignOut }) {
           courses={visibleCourses}
           progressMap={progressMap}
           onEnroll={(id) => enrollCourse(id)}
+          onUnenroll={(id) => unenrollCourse(id)}
+          onSetReviewEnabled={(id, enabled) => setReviewEnabled(id, enabled)}
           onOpenCourse={(c) => setView({ screen: "course", course: c })}
           onBack={() => setView({ screen: "library" })}
         />
