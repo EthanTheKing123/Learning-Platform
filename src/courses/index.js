@@ -8,4 +8,6 @@ import { chemistry } from "./chemistryoutcomes.js";
 import { psychologyLevel1 } from "./psychology.js";
 import { appliedNutrition } from "./appliednutrition.js";
 import { economics } from "./economics.js";
-export const COURSES = [sleepScience, boostPerformance, studyLearning, chemistry, psychologyLevel1, appliedNutrition, economics];
+import businessStudiesYear11 from "./businessStudiesYear11.js";
+import businessStudiesYear12 from "./businessStudiesYear12.js";
+export const COURSES = [sleepScience, boostPerformance, studyLearning, chemistry, psychologyLevel1, appliedNutrition, economics, businessStudiesYear11, businessStudiesYear12,];
