@@ -2519,7 +2519,7 @@ export default function LearningPlatform({ user, onSignOut }) {
   const [view, setView] = useState({ screen: "hub" });
   const [progressMap, setProgressMap] = useState({});
   const [loaded, setLoaded] = useState(false);
-  const [settings, setSettings] = useState({ dailyReviewLimit: DEFAULT_DAILY_LIMIT, tutorialSeen: true });
+  const [settings, setSettings] = useState({ dailyReviewLimit: DEFAULT_DAILY_LIMIT, tutorialSeen: false });
   const dailyLimit = settings.dailyReviewLimit;
 
   const visibleCourses = COURSES.filter(
@@ -2539,8 +2539,12 @@ export default function LearningPlatform({ user, onSignOut }) {
       setProgressMap(Object.fromEntries(entries));
       const loadedSettings = await loadProgress(SETTINGS_DOC_ID);
       setSettings({
-        dailyReviewLimit: loadedSettings?.dailyReviewLimit ? Math.max(MIN_DAILY_LIMIT, loadedSettings.dailyReviewLimit) : DEFAULT_DAILY_LIMIT,
-        tutorialSeen: !!loadedSettings?.tutorialSeen,
+        dailyReviewLimit: loadedSettings?.dailyReviewLimit
+          ? Math.max(MIN_DAILY_LIMIT, loadedSettings.dailyReviewLimit)
+          : DEFAULT_DAILY_LIMIT,
+
+        // Show tutorial if this is a brand-new user
+        tutorialSeen: loadedSettings?.tutorialSeen ?? false,
       });
       setLoaded(true);
     })();
