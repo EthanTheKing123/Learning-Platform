@@ -10,6 +10,10 @@
 // ("hypnogram" and "cycle", used by Sleep Science) still live directly in
 // App.jsx's Diagram() function, untouched — this registry only adds new
 // kinds on top, it doesn't replace anything existing.
+//
+// Per-course subfolders (like businessStudiesYear11/) keep their own local
+// registry and get merged in below — that folder's index.js is the only
+// file that course's diagrams ever need to touch.
 import EvidencePyramid from "./EvidencePyramid.jsx";
 import LoadingPhaseChart from "./LoadingPhaseChart.jsx";
 import MacroBreakdown from "./MacroBreakdown.jsx";
@@ -20,6 +24,7 @@ import HydrationNeedChart from "./HydrationNeedChart.jsx";
 import EnergySystemsTimeline from "./EnergySystemsTimeline.jsx";
 import GutDiversityDiagram from "./GutDiversityDiagram.jsx";
 import FastingTimelineChart from "./FastingTimelineChart.jsx";
+import { DIAGRAM_REGISTRY as BUSINESS_STUDIES_YEAR11_DIAGRAMS } from "./businessStudiesYear11/index.js";
 
 export const DIAGRAM_REGISTRY = {
   evidencePyramid: EvidencePyramid,
@@ -32,4 +37,5 @@ export const DIAGRAM_REGISTRY = {
   energySystemsTimeline: EnergySystemsTimeline,
   gutDiversityDiagram: GutDiversityDiagram,
   fastingTimelineChart: FastingTimelineChart,
+  ...BUSINESS_STUDIES_YEAR11_DIAGRAMS,
 };
