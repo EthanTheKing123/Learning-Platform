@@ -2322,12 +2322,40 @@ function TutorialOverlay({ targetRefs, onDone, onSkip }) {
   }, [step, current.target, targetRefs]);
 
   const cardWidth = Math.min(300, (typeof window !== "undefined" ? window.innerWidth : 340) - 32);
+  const cardHeight = 210; // approximate rendered height, used for collision math only
+  const gap = 18;
   let cardStyle;
   if (rect && typeof window !== "undefined") {
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const placeBelow = spaceBelow > 220;
-    const top = placeBelow ? rect.bottom + 18 : Math.max(16, rect.top - 210);
-    const left = Math.min(Math.max(16, rect.left), window.innerWidth - cardWidth - 16);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const spaceBelow = vh - rect.bottom;
+    const spaceAbove = rect.top;
+    const spaceRight = vw - rect.right;
+    const spaceLeft = rect.left;
+
+    // Prefer stacking below/above the target (keeps the card from ever
+    // covering it horizontally, since the two never overlap vertically
+    // once separated by `gap`). Only fall back to beside it if there's
+    // truly not enough vertical room either way — e.g. the target spans
+    // almost the full viewport height.
+    let top, left;
+    if (spaceBelow >= cardHeight + gap || spaceBelow >= spaceAbove) {
+      top = rect.bottom + gap;
+      left = Math.min(Math.max(16, rect.left), vw - cardWidth - 16);
+    } else if (spaceAbove >= cardHeight + gap) {
+      top = Math.max(16, rect.top - cardHeight - gap);
+      left = Math.min(Math.max(16, rect.left), vw - cardWidth - 16);
+    } else if (spaceRight >= cardWidth + gap) {
+      top = Math.min(Math.max(16, rect.top), vh - cardHeight - 16);
+      left = rect.right + gap;
+    } else if (spaceLeft >= cardWidth + gap) {
+      top = Math.min(Math.max(16, rect.top), vh - cardHeight - 16);
+      left = Math.max(16, rect.left - cardWidth - gap);
+    } else {
+      // Nowhere collision-free — put it wherever there's the most room
+      // and let it clamp to the viewport edge rather than risk a worse spot.
+      top = spaceBelow > spaceAbove ? rect.bottom + gap : Math.max(16, rect.top - cardHeight - gap);
+      left = Math.min(Math.max(16, rect.left), vw - cardWidth - 16);
+    }
     cardStyle = { position: "fixed", top, left, width: cardWidth, zIndex: 10000 };
   } else {
     cardStyle = { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: cardWidth, zIndex: 10000 };
@@ -2538,14 +2566,33 @@ export default function LearningPlatform({ user, onSignOut }) {
       }));
       setProgressMap(Object.fromEntries(entries));
       const loadedSettings = await loadProgress(SETTINGS_DOC_ID);
-      setSettings({
+
+      // The tutorialSeen field didn't always exist. If it's genuinely
+      // absent (not just explicitly set to false, which happens when
+      // someone hits "replay tutorial"), don't just default it to
+      // false — that would make the tour pop back up for existing
+      // users who already have courses/progress, as if they were
+      // brand new. Only show it when there's truly no progress
+      // anywhere, i.e. this account has never actually used the app.
+      let tutorialSeen = loadedSettings?.tutorialSeen;
+      const isGenuinelyNew = tutorialSeen === undefined;
+      if (isGenuinelyNew) {
+        const hasExistingProgress = entries.some(
+          ([, p]) => p.enrolled || (p.completedLessons && p.completedLessons.length > 0)
+        );
+        tutorialSeen = hasExistingProgress;
+      }
+
+      const nextSettings = {
         dailyReviewLimit: loadedSettings?.dailyReviewLimit
           ? Math.max(MIN_DAILY_LIMIT, loadedSettings.dailyReviewLimit)
           : DEFAULT_DAILY_LIMIT,
-
-        // Show tutorial if this is a brand-new user
-        tutorialSeen: loadedSettings?.tutorialSeen ?? false,
-      });
+        tutorialSeen,
+      };
+      setSettings(nextSettings);
+      // Persist the backfilled value so this inference only ever runs
+      // once per account, not on every load.
+      if (isGenuinelyNew) saveProgress(SETTINGS_DOC_ID, nextSettings);
       setLoaded(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
